@@ -8,7 +8,7 @@ type headerBytes = {
     fourthByte:byte
 }
 
-//Header configs stored here after parsing header
+//Configs stored here after parsing header
 type headerConfigs = {
     audioVersion:byte;
     layerDesc:byte;
@@ -18,7 +18,7 @@ type headerConfigs = {
     padding:bool;
     privateBit:bool;
     channelMode:byte;
-    modeExtension:int;
+    modeExtension:byte * string;
     copyright:bool;
     original:bool;
     emphasis:(byte * string)
@@ -27,9 +27,9 @@ type headerConfigs = {
 //Tuple used for the parsing process
 type headerFlags = headerBytes * headerConfigs
 
-//Determine MPEG Layer version
+//Determine MPEG version
 let getAudioVersion (x:headerFlags) = 
-    let sndByte = (x |> fst).secondByte
+    let sndByte = (fst x).secondByte
     let version = (sndByte >>> 3) &&& 0b00000011uy
     let newConfig = {snd x with audioVersion = version}
     let (newFlags:headerFlags) = (fst x,newConfig)
@@ -37,7 +37,7 @@ let getAudioVersion (x:headerFlags) =
 
 //Determine MPEG Layer
 let getLayerDesc (x:headerFlags) = 
-    let sndByte = (x |> fst).secondByte
+    let sndByte = (fst x).secondByte
     let desc = (sndByte >>> 1) &&& 0b00000011uy
     let newConfig = {snd x with layerDesc = desc}
     let (newFlags:headerFlags) = (fst x,newConfig)
@@ -45,11 +45,11 @@ let getLayerDesc (x:headerFlags) =
 
 //Determine whether protected
 let getProtectionBit (x:headerFlags) = 
-    let protection = (x |> fst).secondByte &&& 0b00000001uy
+    let protection = (fst x).secondByte &&& 0b00000001uy
     let newConfig = 
         match protection with
-        |1uy -> {snd x with protection = true}
-        |_ -> {snd x with protection = false}
+        |1uy -> {snd x with protection = false}
+        |_ -> {snd x with protection = true}
     let (newFlags:headerFlags) = (fst x,newConfig)
     newFlags
 
@@ -57,20 +57,20 @@ let getProtectionBit (x:headerFlags) =
 let getBitrate (x:headerFlags) = 
     
     //Define bitrate arrays
-    let arr12 = [|32;48;56;64;80;96;112;128;160;192;224;256;320;384|]
-    let arr13 = [|32;40;48;56;64;80;96;112;128;144;160;176;192;224;256|]
+    let arr12 = [|0;32;48;56;64;80;96;112;128;160;192;224;256;320;384|]
+    let arr13 = [|0;32;40;48;56;64;80;96;112;128;144;160;176;192;224;256|]
     
     //Get bitrate index
-    let bitIndex = (((x |> fst).thirdByte >>> 4) &&& 0b00001111uy) |> int
+    let bitIndex = (((fst x).thirdByte >>> 4) &&& 0b00001111uy) |> int
     let version = (snd x).audioVersion |> int
     let layer = (snd x).layerDesc |> int
     
     //Determine bitrate
     let bitrate = 
         match (version,layer) with
-        |(3,1) -> arr13.[bitIndex]
-        |(3,2) -> arr12.[bitIndex]
-        |(3,3) -> 32 * bitIndex
+        |(3,1) -> arr13.[bitIndex] * 1000
+        |(3,2) -> arr12.[bitIndex] * 1000
+        |(3,3) -> 32000 * bitIndex
         |(3,_) -> failwith "Layer Error"
         |(2,_) -> failwith "Version 2 unimplemented"
         |(_,_) -> failwith "Unimplemented"
@@ -120,22 +120,31 @@ let getChannelMode (x:headerFlags) =
     let (newFlags:headerFlags) = (fst x,newConfig)
     newFlags
 
+//Get mode Extension
+let getModeExtension (x:headerFlags) = 
+    let extension = 
+        match (snd x).channelMode with
+        |01uy -> ((((fst x).fourthByte >>> 4) &&& 0b00000011uy),"Applicable")
+        |_ -> (00uy,"Not Applicable")
+    let newFlags = fst x,{snd x with modeExtension = extension}
+    newFlags
+
 //check copyright
 let getCopyright (x:headerFlags) =
-    let copyBit = ((fst x).fourthByte >>> 3) &&& 0b00000001uy |> int
+    let copyBit = ((fst x).fourthByte >>> 3) &&& 0b00000001uy
     let newConfig = 
         match copyBit with
-        |0 -> {snd x with copyright = false}
+        |0uy -> {snd x with copyright = false}
         |_ -> {snd x with copyright = true}
     let (newFlags:headerFlags) = (fst x,newConfig)
     newFlags
 
 //Check original
 let getOriginal (x:headerFlags) =
-    let origBit = ((fst x).fourthByte >>> 2) &&& 0b00000001uy |> int
+    let origBit = ((fst x).fourthByte >>> 2) &&& 0b00000001uy
     let newConfig = 
         match origBit with
-        |0 -> {snd x with original = false}
+        |0uy -> {snd x with original = false}
         |_ -> {snd x with original = true}
     let (newFlags:headerFlags) = (fst x,newConfig)
     newFlags
@@ -149,7 +158,7 @@ let getEmphasis (x:headerFlags) =
         |1uy -> "50/15 ms"
         |2uy -> "reserved"
         |3uy -> "CCIT J.17"
-        |_ -> failwith "Unknown error"
+        |_ -> failwith "Unknown Emphasis"
     let newConfig = {snd x with emphasis = (emphasisBits,emphasisString)}
     let (newFlags:headerFlags) = (fst x,newConfig)
     newFlags
@@ -163,12 +172,13 @@ let parseHeader =
     getSampleRate >>
     getPadding >>
     getChannelMode >>
+    getModeExtension >>
     getCopyright >>
     getOriginal >>
     getEmphasis
 
+//Test code
 let main = 
-    //Test code
     let testHeader = {
         firstByte = 0xFFuy; 
         secondByte = 0xFBuy; 
@@ -185,11 +195,10 @@ let main =
         padding = false;
         privateBit = false;
         channelMode = 0uy;
-        modeExtension = 0;
+        modeExtension = 0uy,"";
         copyright = true;
         original = true;
         emphasis = (0uy,"")
     }
 
-    let testFlags = (testHeader,testConfig)
-    testFlags |> parseHeader |> snd |> printfn "%A"
+    (testHeader,testConfig) |> parseHeader |> snd |> printfn "%A"
