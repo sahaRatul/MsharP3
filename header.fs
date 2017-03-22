@@ -1,7 +1,7 @@
 open System;
 
 //Header bytes stored here
-type headerBytes = {
+type HeaderBytes = {
     firstByte:byte;
     secondByte:byte;
     thirdByte:byte;
@@ -9,27 +9,27 @@ type headerBytes = {
 }
 
 //Configs stored here after parsing header
-type headerConfigs = {
+type HeaderConfigs = {
     audioVersion:byte;
     layerDesc:byte;
     protection:bool;
     bitRate:int;
     sampleRate:int;
     padding:bool;
-    privateBit:bool;
+    privateBit:int;
     channelMode:byte;
-    modeExtension:byte * string;
+    modeExtension:byte;
     copyright:bool;
     original:bool;
-    emphasis:(byte * string)
+    emphasis:byte
 }
 
 //Side info stored here
-type sideInfo = {
+type SideInfo = {
     data:List<byte>
 }
 
-type sideInfoConfig = {
+type SideInfoConfig = {
     mainDataBegin:array<int>;
     privateBits:array<int>;
     scfsi:array<array<int>>;
@@ -47,9 +47,6 @@ type sideInfoConfig = {
     scaleFactorScale:array<array<int>>;
     count1TableSelect:array<array<int>>;*)
 }
-
-//Tuple used for the parsing process
-type headerFlags = headerBytes * headerConfigs
 
 //Get a Array of bits from a list of bytes
 let getBitsArrayfromList x = 
@@ -70,179 +67,52 @@ let x = [|1;1;1;1;0;1|]
 let bitsArrayTonumber x = 
     x 
     |> Array.zip[|(x.Length-1)..(-1)..0|] 
-    |> Array.map (fun x -> snd x * (pown 2 (fst x)))
-    |> Array.fold (fun acc elem -> acc + elem) 0
+    |> Array.sumBy (fun x -> snd x * (pown 2 (fst x)))
 
-x |> bitsArrayTonumber |> printfn "%A"
+let parseHeader (x:List<Byte>) = 
+    
+    let getBitrate x index = 
+        let arr12 = [|0;32;48;56;64;80;96;112;128;160;192;224;256;320;384|]
+        let arr13 = [|0;32;40;48;56;64;80;96;112;128;160;192;224;256;320|]
+        match x with
+        |(1,1) -> arr13.[index] * 1000;
+        |(1,2) -> arr12.[index] * 1000;
+        |(1,3) -> index * 32000;
+        |(0,_) -> failwith "MPEG 2 unimplemented"
+        |(_,_) -> failwith "Bitrate error"
 
-let parseHeader2 (x:List<Byte>) = 
+    let getSamplerate x index = 
+        match x,index with
+        |(1,0) -> 44100
+        |(1,1) -> 48000
+        |(1,3) -> 32000
+        |(_,_) -> failwith "SampleRate error"
+
     match x.Length = 4 with
     |false -> failwith "Not 4 bytes of header"
     |true -> 
         let bits = x |> List.map int |> getBitsArrayfromList
-        let (config:headerConfigs) = {
-            audioVersion = bits.[13] |> byte;
-            layerDesc = bits.[14..15] |> bitsArrayTonumber |> byte;
-            protection = if bits.[16] = 0 then false else true;
+        let (config:HeaderConfigs) = {
+            audioVersion = bits.[12] |> byte;
+            layerDesc = bits.[13..14] |> bitsArrayTonumber |> byte;
+            protection = if bits.[15] = 0 then false else true;
+            bitRate = bits.[16..19] |> bitsArrayTonumber |> getBitrate (bits.[12],bits.[13..14] |> bitsArrayTonumber);
+            sampleRate = bits.[20..21] |> bitsArrayTonumber |> getSamplerate bits.[12]
+            padding = if bits.[22] = 0 then false else true;
+            privateBit = bits.[23];
+            channelMode = bits.[24..25] |> bitsArrayTonumber |> byte;
+            modeExtension = bits.[26..27] |> bitsArrayTonumber |> byte;
+            copyright = if bits.[28] = 0 then false else true;
+            original = if bits.[29] = 0 then false else true;
+            emphasis = bits.[30..31] |> bitsArrayTonumber |> byte
         }
         config
-        //bits
-
-let parseHeader = 
-    //Determine MPEG version
-    let getAudioVersion (x:headerFlags) = 
-        let sndByte = (fst x).secondByte
-        let version = (sndByte >>> 3) &&& 0b00000011uy
-        let newConfig = {snd x with audioVersion = version}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Determine MPEG Layer
-    let getLayerDesc (x:headerFlags) = 
-        let sndByte = (fst x).secondByte
-        let desc = (sndByte >>> 1) &&& 0b00000011uy
-        let newConfig = {snd x with layerDesc = desc}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Determine whether protected
-    let getProtectionBit (x:headerFlags) = 
-        let protection = (fst x).secondByte &&& 0b00000001uy
-        let newConfig = 
-            match protection with
-            |1uy -> {snd x with protection = false}
-            |_ -> {snd x with protection = true}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Determine bitrate from bitrate index
-    let getBitrate (x:headerFlags) = 
         
-        //Define bitrate arrays
-        let arr12 = [|0;32;48;56;64;80;96;112;128;160;192;224;256;320;384|]
-        let arr13 = [|0;32;40;48;56;64;80;96;112;128;160;192;224;256;320|]
-        
-        //Get bitrate index
-        let bitIndex = (((fst x).thirdByte >>> 4) &&& 0b00001111uy) |> int
-        let version = (snd x).audioVersion |> int
-        let layer = (snd x).layerDesc |> int
-        
-        //Determine bitrate
-        let bitrate = 
-            match (version,layer) with
-            |(3,1) -> arr13.[bitIndex] * 1000
-            |(3,2) -> arr12.[bitIndex] * 1000
-            |(3,3) -> 32000 * bitIndex
-            |(3,_) -> failwith "Layer Error"
-            |(2,_) -> failwith "Version 2 unimplemented"
-            |(_,_) -> failwith "Unimplemented"
-        let newConfig = {snd x with bitRate = bitrate}  
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Get Sampling Rate
-    let getSampleRate (x:headerFlags) = 
-        let sampleIndex = ((fst x).thirdByte >>> 2) &&& 0b00000011uy |> int
-        let version = (snd x).audioVersion |> int
-        let samplerate = 
-            match (version,sampleIndex) with
-            |(3,0) -> 44100
-            |(3,1) -> 48000
-            |(3,2) -> 32000
-            |(3,3) -> 0
-            |(_,_) -> failwith "Version 2 unimplemented"
-        let newConfig = {snd x with sampleRate = samplerate}  
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Check padding
-    let getPadding (x:headerFlags) =
-        let ispadded = ((fst x).thirdByte >>> 1) &&& 0b00000001uy |> int
-        let newConfig = 
-            match ispadded with
-            |0 -> {snd x with padding = false}
-            |_ -> {snd x with padding = true}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Check private Bit
-    let getPrivateBit (x:headerFlags) =
-        let privateBit = (fst x).thirdByte &&& 0b00000001uy |> int
-        let newConfig = 
-            match privateBit with
-            |0 -> {snd x with privateBit = false}
-            |_ -> {snd x with privateBit = true}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Get channel mode
-    let getChannelMode (x:headerFlags) = 
-        let mode = ((fst x).fourthByte >>> 6) &&& 0b00000011uy
-        let newConfig = {snd x with channelMode = mode}  
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Get mode Extension
-    let getModeExtension (x:headerFlags) = 
-        let extension = 
-            match (snd x).channelMode with
-            |01uy -> ((((fst x).fourthByte >>> 4) &&& 0b00000011uy),"Applicable")
-            |_ -> (00uy,"Not Applicable")
-        let newFlags = fst x,{snd x with modeExtension = extension}
-        newFlags
-
-    //check copyright
-    let getCopyright (x:headerFlags) =
-        let copyBit = ((fst x).fourthByte >>> 3) &&& 0b00000001uy
-        let newConfig = 
-            match copyBit with
-            |0uy -> {snd x with copyright = false}
-            |_ -> {snd x with copyright = true}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Check original
-    let getOriginal (x:headerFlags) =
-        let origBit = ((fst x).fourthByte >>> 2) &&& 0b00000001uy
-        let newConfig = 
-            match origBit with
-            |0uy -> {snd x with original = false}
-            |_ -> {snd x with original = true}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-
-    //Get Emphasis
-    let getEmphasis (x:headerFlags) = 
-        let emphasisBits = (fst x).fourthByte &&& 0b00000011uy
-        let emphasisString = 
-            match emphasisBits with
-            |0uy -> "none"
-            |1uy -> "50/15 ms"
-            |2uy -> "reserved"
-            |3uy -> "CCIT J.17"
-            |_ -> failwith "Unknown Emphasis"
-        let newConfig = {snd x with emphasis = (emphasisBits,emphasisString)}
-        let (newFlags:headerFlags) = (fst x,newConfig)
-        newFlags
-    
-    //Stitch all of the above functions
-    getAudioVersion >> 
-    getLayerDesc >> 
-    getProtectionBit >> 
-    getBitrate >>
-    getSampleRate >>
-    getPadding >>
-    getChannelMode >>
-    getModeExtension >>
-    getCopyright >>
-    getOriginal >>
-    getEmphasis
-
-let getSideConfig (x:List<Byte>) (y:headerConfigs) = 
+let getSideConfig (x:List<Byte>) (y:HeaderConfigs) = 
     match (x.Length,y.channelMode) with
     |(17,3uy) -> //For mono
         let bitArray = x |> List.map int |> getBitsArrayfromList
-        let (configs:sideInfoConfig) = {
+        let (configs:SideInfoConfig) = {
             mainDataBegin = bitArray.[0..8];
             privateBits = bitArray.[9..11];
             scfsi = [|bitArray.[12..15]|];
@@ -257,7 +127,7 @@ let getSideConfig (x:List<Byte>) (y:headerConfigs) =
         configs
     |(32,0uy)|(32,1uy)|(32,2uy) -> //For dual channel modes
         let bitArray = x |> List.map int |> getBitsArrayfromList
-        let (configs:sideInfoConfig) = {
+        let (configs:SideInfoConfig) = {
             mainDataBegin = bitArray.[0..8];
             privateBits = bitArray.[9..11];
             scfsi = [|bitArray.[12..15];bitArray.[16..19]|];
@@ -275,33 +145,12 @@ let getSideConfig (x:List<Byte>) (y:headerConfigs) =
 
 //Test Data
 let main = 
-    let testHeader = {
-        firstByte = 0xFFuy; 
-        secondByte = 0xFBuy; 
-        thirdByte = 0xE2uy; 
-        fourthByte = 0x64uy
-    }
-
     let data = 
         [0x7A;0x86;0x05;0xD2;0x76;0x5A;0x51;0xE9;0x35;0xB6;
         0x30;0x82;0x4B;0x4E;0x3D;0x82;0x18;0x16;0xEE;0x11;
         0x63;0xA7;0xB0;0xD6;0x98;0xC5;0x89;0xEC;0xF8;0xC0;0x99;0x98]
 
-    let testConfig = {
-        audioVersion = 0uy;
-        layerDesc = 0uy;
-        protection = false;
-        bitRate = 0;
-        sampleRate = 0;
-        padding = false;
-        privateBit = false;
-        channelMode = 0uy;
-        modeExtension = 0uy,"";
-        copyright = true;
-        original = true;
-        emphasis = (0uy,"")
-    }
-
-    data |> getBitsArrayfromList |> printfn "%A"
-    let header = (testHeader,testConfig) |> parseHeader
-    getSideConfig (data |> List.map byte) (snd header) |> printfn "%A"
+    //data |> getBitsArrayfromList |> printfn "%A"
+    let header = [0xFFuy;0xFBuy;0xE2uy;0x64uy] |> parseHeader
+    printfn "Header = %A\n" header
+    getSideConfig (data |> List.map byte) header |> printfn "%A"
