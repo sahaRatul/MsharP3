@@ -1,13 +1,5 @@
 open System;
 
-//Header bytes stored here
-type HeaderBytes = {
-    firstByte:byte;
-    secondByte:byte;
-    thirdByte:byte;
-    fourthByte:byte
-}
-
 //Configs stored here after parsing header
 type HeaderConfigs = {
     audioVersion:byte;
@@ -24,28 +16,32 @@ type HeaderConfigs = {
     emphasis:byte
 }
 
-//Side info stored here
-type SideInfo = {
-    data:List<byte>
+//Side Info granule
+type sideInfoGranule = {
+    channel:int;
+    par23Length:array<int>;
+    bigValues:array<int>;
+    globalGain:array<int>;
+    scaleFactorCompress:array<int>;
+    windowSwitchFlag:bool;
+    blockType:array<int>;
+    mixedBlockFlag:bool;
+    tableSelect:array<array<int>>;
+    subBlockGain:array<array<int>>;
+    region0Count:array<int>;
+    region1Count:array<int>;
+    preflag:int;
+    scaleFactorScale:int;
+    count1TableSelect:int;
 }
 
+//SideInfo
 type SideInfoConfig = {
     mainDataBegin:array<int>;
     privateBits:array<int>;
     scfsi:array<array<int>>;
-    par23Length:array<array<int>>;
-    bigValues:array<array<int>>;
-    globalGain:array<array<int>>;
-    scaleFactorCompress:array<array<int>>;
-    windowSwitchFlag:array<int>;
-    blockType:array<array<int>>;
-    mixedBlockFlag:array<int>;
-    (*tableSelect:array<array<int>>;
-    subBlockGain:array<array<int>>;
-    region0Count:array<array<int>>;
-    preflag:array<array<int>>;
-    scaleFactorScale:array<array<int>>;
-    count1TableSelect:array<array<int>>;*)
+    sideInfoGr0:array<sideInfoGranule>;
+    sideInfoGr1:array<sideInfoGranule>
 }
 
 //Get a Array of bits from a list of bytes
@@ -63,12 +59,12 @@ let getBitsArrayfromList x =
         y
     x |> List.map getBits |> Array.concat
 
-let x = [|1;1;1;1;0;1|]
 let bitsArrayTonumber x = 
     x 
     |> Array.zip[|(x.Length-1)..(-1)..0|] 
     |> Array.sumBy (fun x -> snd x * (pown 2 (fst x)))
 
+//Parse Header
 let parseHeader (x:List<Byte>) = 
     
     let getBitrate x index = 
@@ -108,36 +104,86 @@ let parseHeader (x:List<Byte>) =
         }
         config
         
+//Parse side information
 let getSideConfig (x:List<Byte>) (y:HeaderConfigs) = 
+    //Outer function
+    let getSideGranule channels data = 
+        //Inner Function
+        let extractGranule (x:array<int>) = 
+            //Actual data
+            let (granule:sideInfoGranule) = {
+                channel = channels |> int
+                par23Length = x.[0..11]
+                bigValues = x.[12..20]
+                globalGain = x.[21..28]
+                scaleFactorCompress = x.[29..32]
+                windowSwitchFlag = 
+                    if x.[33] = 1 then true else false
+                blockType = 
+                    if x.[33] = 1 then x.[34..35]
+                    else null
+                mixedBlockFlag = 
+                    if x.[33] = 1 
+                        then x.[36] |> (fun x -> if x = 1 then true else false)
+                    else 
+                        false
+                tableSelect = 
+                    if x.[33] = 1
+                        then [|x.[37..41];x.[42..46]|]
+                    else
+                        [|x.[34..38];x.[39..43];x.[44..48]|]
+                subBlockGain = 
+                    if x.[33] = 1 
+                        then [|x.[47..49];x.[50..52];x.[53..55]|]
+                    else
+                        null
+                region0Count = 
+                    if x.[33] = 1
+                        then null
+                    else
+                        x.[49..52]
+                region1Count = 
+                    if x.[33] = 1
+                        then null
+                    else
+                        x.[53..55]
+                preflag = x.[56]
+                scaleFactorScale = x.[57]
+                count1TableSelect = x.[58]
+            }
+            granule
+        
+        match channels with
+        |3uy -> //For mono
+            let (granuleArray:array<sideInfoGranule>) = Array.zeroCreate 1
+            granuleArray.[0] <- extractGranule data //Channel 0
+            granuleArray
+        |0uy|1uy|2uy -> //For stereo
+            let (granuleArray:array<sideInfoGranule>) = Array.zeroCreate 2
+            granuleArray.[0] <- extractGranule data //Channel 0
+            granuleArray.[1] <- extractGranule data.[59..] //Channel 1
+            granuleArray
+        |_ -> failwith "unknown channel mode"
+
     match (x.Length,y.channelMode) with
     |(17,3uy) -> //For mono
         let bitArray = x |> List.map int |> getBitsArrayfromList
         let (configs:SideInfoConfig) = {
-            mainDataBegin = bitArray.[0..8];
-            privateBits = bitArray.[9..11];
-            scfsi = [|bitArray.[12..15]|];
-            par23Length = [|bitArray.[16..28]|];
-            bigValues = [|bitArray.[29..37]|];
-            globalGain = [|bitArray.[38..45]|];
-            scaleFactorCompress = [|bitArray.[46..49]|];
-            windowSwitchFlag = [|bitArray.[50]|];
-            blockType = [|bitArray.[51..52]|];
-            mixedBlockFlag = [|bitArray.[53]|];
+            mainDataBegin = bitArray.[0..8]
+            privateBits = bitArray.[9..13]
+            scfsi = [|bitArray.[14..17]|]
+            sideInfoGr0 = bitArray.[18..] |> getSideGranule y.channelMode
+            sideInfoGr1 = bitArray.[77..] |> getSideGranule y.channelMode
         }
         configs
     |(32,0uy)|(32,1uy)|(32,2uy) -> //For dual channel modes
         let bitArray = x |> List.map int |> getBitsArrayfromList
         let (configs:SideInfoConfig) = {
-            mainDataBegin = bitArray.[0..8];
-            privateBits = bitArray.[9..11];
-            scfsi = [|bitArray.[12..15];bitArray.[16..19]|];
-            par23Length = [|bitArray.[20..31];bitArray.[32..43]|];
-            bigValues = [|bitArray.[44..52];bitArray.[53..61]|];
-            globalGain = [|bitArray.[62..69];bitArray.[70..77]|];
-            scaleFactorCompress = [|bitArray.[78..81];bitArray.[82..85]|];
-            windowSwitchFlag = [|bitArray.[86];bitArray.[87]|];
-            blockType = [|bitArray.[88..89];bitArray.[90..91]|];
-            mixedBlockFlag = [|bitArray.[92];bitArray.[93]|];
+            mainDataBegin = bitArray.[0..8]
+            privateBits = bitArray.[9..11]
+            scfsi = [|bitArray.[12..15];bitArray.[16..19]|]
+            sideInfoGr0 = bitArray.[20..] |> getSideGranule y.channelMode
+            sideInfoGr1 = bitArray.[138..] |> getSideGranule y.channelMode
         }
         configs
     |(_,_) -> //Any other cases
