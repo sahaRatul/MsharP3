@@ -1,51 +1,56 @@
-open System;
+open System
 
 //Configs stored here after parsing header
-type HeaderConfigs = {
-    audioVersion:byte;
-    layerDesc:byte;
-    protection:bool;
-    bitRate:int;
-    sampleRate:int;
-    padding:bool;
-    privateBit:int;
-    channelMode:byte;
-    modeExtension:byte;
-    copyright:bool;
-    original:bool;
+type HeaderConfig = {
+    audioVersion:byte
+    layerDesc:byte
+    protection:bool
+    bitRate:int
+    sampleRate:int
+    padding:bool
+    privateBit:int
+    channelMode:byte
+    modeExtension:byte
+    copyright:bool
+    original:bool
     emphasis:byte
 }
 
 //Side Info granule
 type sideInfoGranule = {
-    channel:int;
-    par23Length:array<int>;
-    bigValues:array<int>;
-    globalGain:array<int>;
-    scaleFactorCompress:array<int>;
-    windowSwitchFlag:bool;
-    blockType:array<int>;
-    mixedBlockFlag:bool;
-    tableSelect:array<array<int>>;
-    subBlockGain:array<array<int>>;
-    region0Count:array<int>;
-    region1Count:array<int>;
-    preflag:int;
-    scaleFactorScale:int;
-    count1TableSelect:int;
+    channel:int
+    par23Length:array<int>
+    bigValues:array<int>
+    globalGain:array<int>
+    scaleFactorCompress:array<int>
+    windowSwitchFlag:bool
+    blockType:array<int>
+    mixedBlockFlag:bool
+    tableSelect:array<array<int>>
+    subBlockGain:array<array<int>>
+    region0Count:array<int>
+    region1Count:array<int>
+    preflag:int
+    scaleFactorScale:int
+    count1TableSelect:int
 }
 
 //SideInfo
 type SideInfoConfig = {
-    mainDataBegin:array<int>;
-    privateBits:array<int>;
-    scfsi:array<array<int>>;
-    sideInfoGr0:array<sideInfoGranule>;
+    mainDataBegin:array<int>
+    privateBits:array<int>
+    scfsi:array<array<int>>
+    sideInfoGr0:array<sideInfoGranule>
     sideInfoGr1:array<sideInfoGranule>
 }
 
-//Get a Array of bits from a list of bytes
-let getBitsArrayfromList x = 
+//Main Data
+type MainData = {
+    channel:int
+}
+
+//Get a Array of bits from a Array of bytes
+let getBitsArrayfromByteArray x = 
     let getBits x = 
         let y = [|0;0;0;0;0;0;0;0|]
         y.[7] <- (x >>> 0 &&& 0x01)
@@ -57,15 +62,16 @@ let getBitsArrayfromList x =
         y.[1] <- (x >>> 6 &&& 0x01)
         y.[0] <- (x >>> 7 &&& 0x01)
         y
-    x |> List.map getBits |> Array.concat
+    x |> Array.map getBits |> Array.concat
 
-let bitsArrayTonumber x = 
+//Generate Number from array of bits
+let bitsArraytoNumber x = 
     x 
     |> Array.zip[|(x.Length-1)..(-1)..0|] 
     |> Array.sumBy (fun x -> snd x * (pown 2 (fst x)))
 
 //Parse Header
-let parseHeader (x:List<Byte>) = 
+let parseHeader (x:array<Byte>) = 
     
     let getBitrate x index = 
         let arr12 = [|0;32;48;56;64;80;96;112;128;160;192;224;256;320;384|]
@@ -87,25 +93,25 @@ let parseHeader (x:List<Byte>) =
     match x.Length = 4 with
     |false -> failwith "Not 4 bytes of header"
     |true -> 
-        let bits = x |> List.map int |> getBitsArrayfromList
-        let (config:HeaderConfigs) = {
+        let bits = x |> Array.map int |> getBitsArrayfromByteArray
+        let (config:HeaderConfig) = {
             audioVersion = bits.[12] |> byte;
-            layerDesc = bits.[13..14] |> bitsArrayTonumber |> byte;
+            layerDesc = bits.[13..14] |> bitsArraytoNumber |> byte;
             protection = if bits.[15] = 0 then false else true;
-            bitRate = bits.[16..19] |> bitsArrayTonumber |> getBitrate (bits.[12],bits.[13..14] |> bitsArrayTonumber);
-            sampleRate = bits.[20..21] |> bitsArrayTonumber |> getSamplerate bits.[12]
+            bitRate = bits.[16..19] |> bitsArraytoNumber |> getBitrate (bits.[12],bits.[13..14] |> bitsArraytoNumber);
+            sampleRate = bits.[20..21] |> bitsArraytoNumber |> getSamplerate bits.[12]
             padding = if bits.[22] = 0 then false else true;
             privateBit = bits.[23];
-            channelMode = bits.[24..25] |> bitsArrayTonumber |> byte;
-            modeExtension = bits.[26..27] |> bitsArrayTonumber |> byte;
+            channelMode = bits.[24..25] |> bitsArraytoNumber |> byte;
+            modeExtension = bits.[26..27] |> bitsArraytoNumber |> byte;
             copyright = if bits.[28] = 0 then false else true;
             original = if bits.[29] = 0 then false else true;
-            emphasis = bits.[30..31] |> bitsArrayTonumber |> byte
+            emphasis = bits.[30..31] |> bitsArraytoNumber |> byte
         }
         config
         
 //Parse side information
-let getSideConfig (x:List<Byte>) (y:HeaderConfigs) = 
+let parseSideConfig (x:array<Byte>) (y:HeaderConfig) = 
     //Outer function
     let getSideGranule channels data = 
         //Inner Function
@@ -167,7 +173,7 @@ let getSideConfig (x:List<Byte>) (y:HeaderConfigs) =
 
     match (x.Length,y.channelMode) with
     |(17,3uy) -> //For mono
-        let bitArray = x |> List.map int |> getBitsArrayfromList
+        let bitArray = x |> Array.map int |> getBitsArrayfromByteArray
         let (configs:SideInfoConfig) = {
             mainDataBegin = bitArray.[0..8]
             privateBits = bitArray.[9..13]
@@ -177,7 +183,7 @@ let getSideConfig (x:List<Byte>) (y:HeaderConfigs) =
         }
         configs
     |(32,0uy)|(32,1uy)|(32,2uy) -> //For dual channel modes
-        let bitArray = x |> List.map int |> getBitsArrayfromList
+        let bitArray = x |> Array.map int |> getBitsArrayfromByteArray
         let (configs:SideInfoConfig) = {
             mainDataBegin = bitArray.[0..8]
             privateBits = bitArray.[9..11]
@@ -189,14 +195,14 @@ let getSideConfig (x:List<Byte>) (y:HeaderConfigs) =
     |(_,_) -> //Any other cases
         failwith "Error while decoding "
 
+//Parse Main Data
+let parseMainData x = 
+    x
+
 //Test Data
 let main = 
-    let data = 
-        [0x7A;0x86;0x05;0xD2;0x76;0x5A;0x51;0xE9;0x35;0xB6;
-        0x30;0x82;0x4B;0x4E;0x3D;0x82;0x18;0x16;0xEE;0x11;
-        0x63;0xA7;0xB0;0xD6;0x98;0xC5;0x89;0xEC;0xF8;0xC0;0x99;0x98]
+    let data = IO.File.ReadAllBytes "aframe.mp3"
 
-    //data |> getBitsArrayfromList |> printfn "%A"
-    let header = [0xFFuy;0xFBuy;0xE2uy;0x64uy] |> parseHeader
-    printfn "Header = %A\n" header
-    getSideConfig (data |> List.map byte) header |> printfn "%A"
+    let header = data.[0..3] |> parseHeader
+    printfn "Header\n\n%A\n" header
+    header |> parseSideConfig data.[4..35] |> printfn "Side config\n\n%A\n"
