@@ -57,6 +57,11 @@ type ScaleFactorsShort = {
     data:array<int>
 }
 
+type ScaleFactors = 
+|Short of ScaleFactorsShort
+|Long of ScaleFactorsLong
+|Mixed of (ScaleFactorsShort * ScaleFactorsLong)
+
 type Samples = {
     group:int
     channel:int
@@ -87,7 +92,9 @@ let bitsArraytoNumber x =
     x 
     |> Array.zip[|(x.Length-1)..(-1)..0|] 
     |> Array.sumBy (fun x -> snd x * (pown 2 (fst x)))
-
+//Extract bits from a bits array and convert to number
+let getBits count (x:array<int>) = 
+    (x.[0..(count-1)] |> bitsArraytoNumber,x.[count..])
 //Parse Header
 let parseHeader (x:array<Byte>) = 
     let getBitrate x index = 
@@ -254,66 +261,47 @@ let parseMainData (data:array<Byte>) (header:HeaderConfig) (sideinfo:SideInfoCon
                 [|0;0|];[|0;1|];[|0;2|];[|0;3|];[|3;0|];[|1;1|];[|1;2|];[|1;3|];
                 [|2;1|];[|2;2|];[|2;3|];[|3;1|];[|3;2|];[|3;3|];[|4;2|];[|4;3|];
             |]
-        let scalefactorLength = [|slen.[y.scaleFactorCompress].[0];slen.[y.scaleFactorCompress].[1]|]
-        let lScaleFactor = Array.zeroCreate 22
-        let sScaleFactors = Array2D.zeroCreate 3 13
-        let result = 
+        let result:ScaleFactors = 
             match (y.blockType,y.windowSwitchFlag) with
-            |(2,true) -> //short blocks
-                match (y.mixedBlockFlag) with
-                |true -> //Mixed blocks
-                    for i = 0 to 7 do
-                        lScaleFactor.[0] <- 
-                            x.[(scalefactorLength.[0] * i)..(scalefactorLength.[0] * (i+1)) - 1] 
-                            |> Array.map int 
-                            |> bitsArraytoNumber
-                    for i = 3 to 5 do
-                        for j = 0 to 2 do
-                            sScaleFactors.[j,i] <- 
-                                x.[(scalefactorLength.[0] * i)..(scalefactorLength.[0] * (i+1))] 
-                                |> Array.map int 
-                                |> bitsArraytoNumber
-                |false -> 
-                     for i = 0 to 5 do
-                        for j = 0 to 2 do
-                            sScaleFactors.[j,i] <- 
-                                x.[(scalefactorLength.[0] * i)..(scalefactorLength.[0] * (i+1))] 
-                                |> Array.map int 
-                                |> bitsArraytoNumber
-                 for i = 6 to 12 do
-                    for j = 0 to 3 do
-                        sScaleFactors.[j,i] <- 
-                            x.[(scalefactorLength.[0] * i)..(scalefactorLength.[0] * (i+1))] 
-                            |> Array.map int 
-                            |> bitsArraytoNumber
-                for j = 0 to 3 do
-                    sScaleFactors.[j,12] <- 
-                        x.[(scalefactorLength.[0] * i)..(scalefactorLength.[0] * (i+1))] 
-                        |> Array.map int 
-                        |> bitsArraytoNumber
-            |(_,_) -> //Long blocks
-                match y.granule = 0 with
-                |true ->
-                    for i = 0 to 10
-                        lScaleFactor.[i] <- 
-                            x.[(scalefactorLength.[0] * i)..(scalefactorLength.[0] * (i+1)) - 1] 
-                            |> Array.map int 
-                            |> bitsArraytoNumber
-                    for i = 11 to 20
-                        x.[(scalefactorLength.[1] * i)..(scalefactorLength.[1] * (i+1)) - 1] 
-                        |> Array.map int 
-                        |> bitsArraytoNumber
-                |false ->
-                    let sb = [|6;11;16;21|];
-                    for i = 0 to 1
-                        for j = 0 to (sb.[i] - 1)
-                            if (sideinfo.scfsi.[i]) 
-                                then
-        slen
+            |(2,true) -> //short/mixed
+                match y.mixedBlockFlag with
+                |true -> //Mixed
+                    let (longScale:ScaleFactorsLong) = {
+                        granule = y.granule
+                        channel = y.channel
+                        data = Array.zeroCreate 8
+                    }
+                    let (shortScale:ScaleFactorsShort) = {
+                        granule = y.granule
+                        channel = y.channel
+                        window = 0
+                        data = Array.zeroCreate 8
+                    }
+                    Mixed (shortScale,longScale)
+                |false -> //Short
+                    let (shortScale:ScaleFactorsShort) = {
+                        granule = y.granule
+                        channel = y.channel
+                        window = 0
+                        data = Array.zeroCreate 8
+                    }
+                    Short shortScale
+            |(_,_) -> //long
+                let (longScale:ScaleFactorsLong) = {
+                    granule = y.granule
+                    channel = y.channel
+                    data = Array.zeroCreate 8
+                }
+                Long longScale
+        result
     data
+
+
+
 //Test Data
 let main = 
     let data = IO.File.ReadAllBytes "aframe.mp3"
     let header = data.[0..3] |> parseHeader
     printfn "Header\n\n%A\n" header
     header |> parseSideConfig data.[4..35] |> printfn "Side config\n\n%A\n"
+    [|1;1;1;1;1;1;1;1;1;1;1;1|] |> getBits 4 |> printfn "%A"
