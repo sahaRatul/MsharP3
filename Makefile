@@ -1,5 +1,5 @@
 FSC = fsc.exe
 FSCFLAGS = --platform:x64 --nologo --warn:5
 
-all: parser.fsx
-	$(FSC) parser.fsx $(FSCFLAGS)
+all: *.fsx
+	$(FSC) utils.fsx header.fsx sideinfo.fsx maindata.fsx frame.fsx parser.fsx $(FSCFLAGS)
