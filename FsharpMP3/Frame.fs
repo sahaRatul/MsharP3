@@ -60,11 +60,11 @@ module Frame =
         |_ -> failwith "Unknown Samplerate"
 
     //Get Frame frame Size
-    let getFrameSize (x:HeaderConfig) = 
+    let getFrameInfo (x:HeaderConfig) = 
         let samplesCount = 
             match (x.audioVersion,x.layerDesc) with
-            |(3uy,1uy) -> 1152
-            |(3uy,_) -> 576
+            |(1uy,1uy) -> 1152
+            |(1uy,_) -> 576
             |(_,2uy) -> 1152
             |(_,3uy) -> 384
             |(_,_) -> failwith "Error while getting framesize"
