@@ -7,5 +7,8 @@ all: *.fs
 debug: *.fsx
 	fsc AssemblyInfo.fs Utils.fs Tables.fs Header.fs Sideinfo.fs Frame.fs Maindata.fs Program.fs -g $(FSCFLAGS)
 
+msbuild:*.fs
+	MSBuild FsharpMP3.fsproj
+
 clean:
-	rm *.exe *.pdb *.dll
+	MSBuild FsharpMP3.fsproj /t:Clean
