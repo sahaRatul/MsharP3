@@ -2,6 +2,7 @@
 
 open Utils
 open Header
+open Frame
 open Sideinfo
 
 module Maindata = 
@@ -133,4 +134,5 @@ module Maindata =
         sclfactors
 
 module Huffman = 
-    let x = 22
+    let parseHuffmanData (frame:FrameInfo) (granule:sideInfoGranule) = 
+        ()

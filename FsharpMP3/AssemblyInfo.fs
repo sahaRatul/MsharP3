@@ -8,11 +8,11 @@ open System.Runtime.InteropServices
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [<assembly: AssemblyTitle("FsharpMP3")>]
-[<assembly: AssemblyDescription("")>]
+[<assembly: AssemblyDescription("MP3 decoder written in F#")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]
 [<assembly: AssemblyProduct("FsharpMP3")>]
-[<assembly: AssemblyCopyright("Copyright © 2017")>]
+[<assembly: AssemblyCopyright("Copyright © 2017 Ratul Saha")>]
 [<assembly: AssemblyTrademark("")>]
 [<assembly: AssemblyCulture("")>]
 
