@@ -1,11 +1,11 @@
 ﻿FSC = fsc.exe
-FSCFLAGS = --platform:x64 --nologo --warn:5
+FSCFLAGS = --warn:5
 
 all: *.fs
-	fsc Utils.fs Header.fs Sideinfo.fs Maindata.fs Frame.fs Program.fs $(FSCFLAGS)
+	fsc AssemblyInfo.fs Utils.fs Tables.fs Header.fs Sideinfo.fs Frame.fs Maindata.fs Program.fs $(FSCFLAGS)
 
 debug: *.fsx
-	fsc Utils.fs Header.fs Sideinfo.fs Maindata.fs Frame.fs Program.fs -g $(FSCFLAGS)
+	fsc AssemblyInfo.fs Utils.fs Tables.fs Header.fs Sideinfo.fs Frame.fs Maindata.fs Program.fs -g $(FSCFLAGS)
 
 clean:
 	rm *.exe *.pdb *.dll
