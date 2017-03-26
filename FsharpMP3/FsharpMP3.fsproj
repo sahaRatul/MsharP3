@@ -59,10 +59,11 @@
     <None Include="App.config" />
     <Content Include="packages.config" />
     <Compile Include="Utils.fs" />
+    <Compile Include="Tables.fs" />
     <Compile Include="Header.fs" />
     <Compile Include="Sideinfo.fs" />
-    <Compile Include="Maindata.fs" />
     <Compile Include="Frame.fs" />
+    <Compile Include="Maindata.fs" />
     <Compile Include="Program.fs" />
     <None Include="Makefile" />
   </ItemGroup>
