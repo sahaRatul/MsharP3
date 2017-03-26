@@ -18,10 +18,13 @@ module Utils =
 
     //Generate Number from array of bits
     let bitsArraytoNumber x = 
-        x 
-        |> Array.zip[|(x.Length-1)..(-1)..0|] 
-        |> Array.sumBy (fun x -> snd x * (pown 2 (fst x)))
+        let mutable out = 0
+        for bit in x do
+            out <- (out <<< 1) ||| bit
+        out
 
     //Extract bits from a bits array and convert to number
     let getBits count (x:array<byte>) = 
-        (x.[0..(count-1)] |> Array.map int |> bitsArraytoNumber,x.[count..])
+        let temp = (x.[0..(count-1)])
+        let ret = (temp |> Array.map int |> bitsArraytoNumber,x.[count..])
+        ret
