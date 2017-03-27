@@ -16,7 +16,7 @@ module Utils =
             y
         x |> Array.map getBits |> Array.concat
 
-    //Generate Number from array of bits
+    //Generate Number from array of bits (x<32 bits
     let bitsArraytoNumber x = 
         let mutable out = 0
         for bit in x do
@@ -27,4 +27,16 @@ module Utils =
     let getBits count (x:array<byte>) = 
         let temp = (x.[0..(count-1)])
         let ret = (temp |> Array.map int |> bitsArraytoNumber,x.[count..])
+        ret
+
+    //For 32 bit
+    let bitsArraytoNumber32 x = 
+        let mutable out = 0ul
+        for bit in x do
+            out <- (out <<< 1) ||| bit
+        out
+
+    let getBits32 count (x:array<byte>) = 
+        let temp = (x.[0..if x.Length < 32 then (x.Length - 1) else (count-1)])
+        let ret = (temp |> Array.map uint32 |> bitsArraytoNumber32,x.[count..])
         ret
