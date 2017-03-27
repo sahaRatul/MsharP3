@@ -129,6 +129,7 @@ module Huffman =
         let samples = Array.zeroCreate 576
         let mutable bitsArray = data
         let mutable bitcount = 0
+        let mutable samplecount = 0
 
         let (region0,region1) = //Get boundaries of sample regions
             match(granule.blockType,granule.windowSwitchFlag) with
@@ -151,19 +152,19 @@ module Huffman =
             |0 -> (0,0,0,0) //Sample = 0 for table0
             |_ -> 
                 let mutable row = 0
-                let rec checkInTable table pattern = 
+                let rec checkInTable table (pattern:uint32) = 
                     match table with
                     |[] -> (0,0,0,snd x)
                     |head::tail -> 
-                        if List.exists (fun (value,size) -> (value = (pattern >>> (32 - size)))) head
+                        if List.exists (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head
                             then 
                                 (
                                     //Size
-                                    head.[List.findIndex (fun (value,size) -> (value = (pattern >>> (32 - size)))) head] |> snd,
+                                    head.[List.findIndex (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head] |> snd,
                                     //Row
                                     row,
                                     //Col
-                                    List.findIndex (fun (value,size) -> (value = (pattern >>> (32 - size)))) head,
+                                    List.findIndex (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head,
                                     //Table number
                                     snd x
                                 )
@@ -171,7 +172,7 @@ module Huffman =
                                 row <- row + 1
                                 checkInTable tail pattern
 
-                let (bits,_) = getBits 32 bitsArray
+                let (bits,_) = getBits32 32 bitsArray
                 let (size,row,col,num) = bits |> checkInTable (fst x)
                 bitcount <- bitcount + size
                 if size <> 0 then bitsArray <- bitsArray.[size..]
@@ -187,6 +188,7 @@ module Huffman =
                         match bigValueLinbit.[num] <> 0, value = (bigValueMax.[num] - 1) with
                         |(true,true) -> 
                             let (bits,temp) = getBits bigValueLinbit.[num] bitsArray
+                            bitcount <- bitcount + bigValueLinbit.[num]
                             bitsArray <- temp
                             bits
                         |(_,_) -> 0
@@ -194,17 +196,22 @@ module Huffman =
                         if value > 0 
                             then 
                                 let (bits,temp) = getBits 1 bitsArray
+                                bitcount <- bitcount + 1
                                 bitsArray <- temp
-                                if bits = 1 then 1 else -1
+                                if bits = 1 then -1 else 1
                             else
                                 1
                     sign * (value + linbit)
                 [row;col] |> List.map (extendSample num)
-
-        let result = 
-            [|0..2..(granule.bigValues * 2)|] |> Array.map (getTable >> decodeTable >> getSample)
-        let test1 = result.[0]
-        result
+        
+        //Decode huffman tables
+        let limit = granule.bigValues * 2
+        while samplecount < (limit) do
+            let result = samplecount |> (getTable >> decodeTable >> getSample)
+            samples.[samplecount] <- result.[0]
+            samples.[samplecount + 1] <- result.[1]
+            samplecount <- samplecount + 2
+        samples
 
 module Maindata = 
     
@@ -221,9 +228,8 @@ module Maindata =
         for i = 0 to 3 do
             let maxbit = bitcount + sideinfo.sideInfoGr.[i].par23Length
             let (x,y) = parseScaleFactors (arrayBits.[bitcount..] |> Array.map byte) sideinfo.sideInfoGr.[i]
-            //parseHuffmanData (data:array<byte>) (frame:FrameInfo) (granule:sideInfoGranule)
             sclfactors.[i] <- x
-            bitcounts.[i] <- y
-            let result = parseHuffmanData (arrayBits.[bitcounts.[i]..maxbit] |> Array.map byte) frameinfo sideinfo.sideInfoGr.[i]
+            bitcount <- bitcount + y
+            let result = parseHuffmanData (arrayBits.[bitcount..maxbit+y] |> Array.map byte) frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
         sclfactors
