@@ -238,6 +238,30 @@ module Huffman =
                     sign * (value + linbit)
                 [row;col] |> List.map (extendSample num)
         
+        //QuadTables
+        let getQuadValues x = 
+            let quadvalues = 
+                match granule.count1TableSelect = 1 with
+                |true -> //Get 4 bits and flip them
+                    let bits = Array.toList bitsArray.[0..3]
+                    bitsArray <- bitsArray.[3..]
+                    bitcount <- bitcount + 4
+                    bits |> List.map (fun x -> if x = 0uy then 1 else 0)
+                |false -> 
+                    let bits = getBits32 32 bitsArray
+                    let rec getvalues x = 
+                        match x with
+                        |[] -> (0,[0;0;0;0])
+                        |((hcode,size),value)::tail -> 
+                            if hcode = ((bits >>> 32 - size) |> int)
+                                then (size,value)
+                                else getvalues tail
+                    let (size,values) = List.zip quadTable quadValues |> getvalues
+                    bitsArray <- bitsArray.[size..]
+                    bitcount <- bitcount + size
+                    values
+            quadvalues
+
         //Decode huffman tables
         let limit = granule.bigValues * 2
         while samplecount < (limit) do
