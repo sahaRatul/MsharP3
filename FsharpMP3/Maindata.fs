@@ -24,13 +24,16 @@ module ScaleFactors =
     |Long of ScaleFactorsLong
     |Mixed of (ScaleFactorsShort * ScaleFactorsLong)
 
-    let parseScaleFactors (x:array<byte>) (y:sideInfoGranule) = 
+    let parseScaleFactors (x:array<byte>) (sideInfoConfig:SideInfoConfig) (y:sideInfoGranule) = 
         let mutable bitcount = 0
-        let slen = 
-            [|
-                [|0;0|];[|0;1|];[|0;2|];[|0;3|];[|3;0|];[|1;1|];[|1;2|];[|1;3|];
-                [|2;1|];[|2;2|];[|2;3|];[|3;1|];[|3;2|];[|3;3|];[|4;2|];[|4;3|];
-            |]
+        //Keep this for later use
+        let mutable scaleLongGr0Ch1 = Array.zeroCreate 22
+        let mutable scaleLongGr0Ch2 = Array.zeroCreate 22
+
+        let slen = [|
+            [|0;0|];[|0;1|];[|0;2|];[|0;3|];[|3;0|];[|1;1|];[|1;2|];[|1;3|];
+            [|2;1|];[|2;2|];[|2;3|];[|3;1|];[|3;2|];[|3;3|];[|4;2|];[|4;3|];
+        |]
         let scaleFactorLengths = [|slen.[y.scaleFactorCompress].[0];slen.[y.scaleFactorCompress].[1]|]
         let (result:ScaleFactors) = 
             match (y.blockType,y.windowSwitchFlag) with
@@ -100,7 +103,7 @@ module ScaleFactors =
                         granule = y.granule
                         channel = y.channel
                         data = 
-                            let temp = Array.zeroCreate 20
+                            let temp = Array.zeroCreate 22
                             let mutable arr = x
                             for sfb = 0 to 9 do
                                 let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
@@ -110,6 +113,9 @@ module ScaleFactors =
                                 let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
                                 arr <- tmp
                                 temp.[sfb] <- num
+                            if y.channel = 0 
+                                then scaleLongGr0Ch1 <- temp
+                                else scaleLongGr0Ch2 <- temp
                             temp
                     }
                     bitcount <- bitcount + 20 * scaleFactorLengths.[0]
@@ -118,11 +124,39 @@ module ScaleFactors =
                     let (longScale:ScaleFactorsLong) = {
                         granule = y.granule
                         channel = y.channel
-                        data = Array.zeroCreate 20 //Handle this later
+                        data = 
+                            let temp = Array.zeroCreate 22
+                            let mutable arr = x
+                            let sb = [|5;10;15;20|]
+                            for i = 0 to 1 do
+                                for sfb = 0 to sb.[i] do
+                                    match sideInfoConfig.scfsi.[y.channel].[i] = 1 with
+                                    |true -> 
+                                        temp.[sfb] <- if y.channel = 0 
+                                                        then scaleLongGr0Ch1.[sfb] 
+                                                        else scaleLongGr0Ch2.[sfb]
+                                    |false -> 
+                                        let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
+                                        arr <- tmp
+                                        bitcount <- bitcount + (1 * scaleFactorLengths.[0])
+                                        temp.[sfb] <- num
+                            for i = 2 to 3 do
+                                for sfb = 0 to sb.[i] do
+                                    match sideInfoConfig.scfsi.[y.channel].[i] = 1 with
+                                    |true -> 
+                                        temp.[sfb] <- if y.channel = 0 
+                                                        then scaleLongGr0Ch1.[sfb] 
+                                                        else scaleLongGr0Ch2.[sfb]
+                                    |false -> 
+                                        let (num,tmp) = arr |> getBits scaleFactorLengths.[1]
+                                        arr <- tmp
+                                        bitcount <- bitcount + (1 * scaleFactorLengths.[1])
+                                        temp.[sfb] <- num
+                            temp
                     }
                     bitcount <- bitcount + 20 * scaleFactorLengths.[0]
                     Long (longScale)
-        (result,bitcount)
+        (result,bitcount)           
 
 module Huffman = 
     let parseHuffmanData (data:array<byte>) (frame:FrameInfo) (granule:sideInfoGranule) = 
@@ -151,7 +185,7 @@ module Huffman =
             match (snd x) with
             |0 -> (0,0,0,0) //Sample = 0 for table0
             |_ -> 
-                let mutable row = 0
+                let mutable rowindex = 0
                 let rec checkInTable table (pattern:uint32) = 
                     match table with
                     |[] -> (0,0,0,snd x)
@@ -162,17 +196,17 @@ module Huffman =
                                     //Size
                                     head.[List.findIndex (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head] |> snd,
                                     //Row
-                                    row,
+                                    rowindex,
                                     //Col
                                     List.findIndex (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head,
                                     //Table number
                                     snd x
                                 )
                             else
-                                row <- row + 1
+                                rowindex <- rowindex + 1
                                 checkInTable tail pattern
 
-                let (bits,_) = getBits32 32 bitsArray
+                let bits = getBits32 32 bitsArray
                 let (size,row,col,num) = bits |> checkInTable (fst x)
                 bitcount <- bitcount + size
                 if size <> 0 then bitsArray <- bitsArray.[size..]
@@ -227,9 +261,9 @@ module Maindata =
         let bitcounts = Array.zeroCreate 4
         for i = 0 to 3 do
             let maxbit = bitcount + sideinfo.sideInfoGr.[i].par23Length
-            let (x,y) = parseScaleFactors (arrayBits.[bitcount..] |> Array.map byte) sideinfo.sideInfoGr.[i]
+            let (x,y) = parseScaleFactors (arrayBits.[bitcount..] |> Array.map byte) sideinfo sideinfo.sideInfoGr.[i]
             sclfactors.[i] <- x
             bitcount <- bitcount + y
-            let result = parseHuffmanData (arrayBits.[bitcount..maxbit+y] |> Array.map byte) frameinfo sideinfo.sideInfoGr.[i]
+            let result = parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
         sclfactors
