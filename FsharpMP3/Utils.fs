@@ -37,6 +37,6 @@ module Utils =
         out
 
     let getBits32 count (x:array<byte>) = 
-        let temp = (x.[0..if x.Length < 32 then (x.Length - 1) else (count-1)])
-        let ret = (temp |> Array.map uint32 |> bitsArraytoNumber32,x.[count..])
+        let temp = (x.[0..(count-1)])
+        let ret = (temp |> Array.map uint32 |> bitsArraytoNumber32)
         ret
