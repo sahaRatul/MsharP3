@@ -2,8 +2,6 @@
 
 A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motivation for this project is to know how the MP3 algorithm works and get hands on experience on F# language. Plus I'm curious about how .NET framework performs on this particular resource intensive workload.
 
-## Block Diagram
-
 ## Current status
 |Task|Status|
 |:----:|:------:|
