@@ -15,14 +15,14 @@ A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motiva
 ## Build instructions
 ### Windows
 **Method 1**: You need [Visual F# SDK 4.0](https://www.microsoft.com/en-us/download/details.aspx?id=48179)
- and GNU Make (either from cygwin or MinGW) for building this project. A Makefile has been provided in the FSharpMP3 directory. To build just `cd` to the directory and type `make all` or `make debug` to build. 
+ and GNU Make (either from cygwin or MinGW) for building this project. A Makefile has been provided in the MSharP3 directory. To build just `cd` to the directory and type `make all` or `make debug` to build. 
 
 **Method 2**: You can also use Visual Studio 2017.
 
 ### Linux (Untested)
 **Method 1**: Get Mono and GNU Make from your distributions package repository. Then follow Method 1 for windows.
 
-**Method 2**: Get .NET core tools for linux and GNU Make. cd to the FSharpMP3 directory and type `make msbuild` to build.
+**Method 2**: Get .NET core tools for linux and GNU Make. cd to the MSharP3 directory and type `make msbuild` to build.
 
 ## References
 * [ISO 11172:3](https://www.iso.org/standard/22412.html)

@@ -1,4 +1,4 @@
-﻿namespace FSharpMP3
+﻿namespace MsharP3
 
 open System
 open Header

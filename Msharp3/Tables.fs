@@ -1,4 +1,4 @@
-namespace FSharpMP3
+namespace MsharP3
 
 //Auto generated tables
 module HuffmanTables = 

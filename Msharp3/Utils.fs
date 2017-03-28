@@ -1,4 +1,4 @@
-﻿namespace FSharpMP3
+﻿namespace MsharP3
 
 module Utils = 
     //Get a Array of bits from a Array of bytes
