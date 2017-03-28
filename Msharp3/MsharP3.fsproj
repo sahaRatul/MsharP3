@@ -7,12 +7,12 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>053d2ea7-413b-453d-bd6b-6ce0b9f97b7c</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>FsharpMP3</RootNamespace>
-    <AssemblyName>FsharpMP3</AssemblyName>
+    <RootNamespace>MsharP3</RootNamespace>
+    <AssemblyName>MsharP3</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>FsharpMP3</Name>
+    <Name>MsharP3</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

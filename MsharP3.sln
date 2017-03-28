@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26206.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsharpMP3", "FsharpMP3\FsharpMP3.fsproj", "{053D2EA7-413B-453D-BD6B-6CE0B9F97B7C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MsharpP3", "MsharP3\MsharP3.fsproj", "{053D2EA7-413B-453D-BD6B-6CE0B9F97B7C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
