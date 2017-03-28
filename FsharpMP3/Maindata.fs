@@ -164,7 +164,7 @@ module ScaleFactors =
         (result,bitcount)           
 
 module Huffman = 
-    let parseHuffmanData (data:array<byte>) (frame:FrameInfo) (granule:sideInfoGranule) = 
+    let parseHuffmanData (data:array<byte>) maxbit (frame:FrameInfo) (granule:sideInfoGranule) = 
         
         let samples = Array.zeroCreate 576
         let mutable bitsArray = data
@@ -191,27 +191,26 @@ module Huffman =
             match (snd x) with
             |0 -> (0,0,0,0) //Sample = 0 for table0
             |_ -> 
-                let rec checkInTable table rowindex (pattern:uint32) = 
+                let rec checkInTable table rowindex = 
                     match table with
                     |[] -> (0,0,0,snd x)
                     |head::tail -> 
-                        if List.exists (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head
+                        if List.exists (fun (value,size) -> (value = ((getBits32 size bitsArray) |> int))) head
                             then 
                                 (
                                     //Size
-                                    head.[List.findIndex (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head] |> snd,
+                                    head.[List.findIndex (fun (value,size) -> (value = ((getBits32 size bitsArray) |> int))) head] |> snd,
                                     //Row
                                     rowindex,
                                     //Col
-                                    List.findIndex (fun (value,size) -> (value = ((pattern >>> (32 - size)) |> int))) head,
+                                    List.findIndex (fun (value,size) -> (value = ((getBits32 size bitsArray) |> int))) head,
                                     //Table number
                                     snd x
                                 )
                             else
-                                checkInTable tail (rowindex + 1) pattern
+                                checkInTable tail (rowindex + 1)
 
-                let bits = getBits32 32 bitsArray
-                let (size,row,col,num) = bits |> checkInTable (fst x) 0
+                let (size,row,col,num) = checkInTable (fst x) 0
                 bitcount <- bitcount + size
                 if size <> 0 then bitsArray <- bitsArray.[size..]
                 (size,row,col,num)
@@ -243,37 +242,42 @@ module Huffman =
                 [row;col] |> List.map (extendSample num)
         
         //QuadTables
-        let getQuadValues x = 
-            let quadvalues = 
-                match granule.count1TableSelect = 1 with
-                |true -> //Get 4 bits and flip them
+        let rec getQuadValues x = 
+            match((bitcount < maxbit) && ((samplecount + 4) < 576)) with
+            |false -> []
+            |true -> 
+                let quadvalues = 
+                    match granule.count1TableSelect = 1 with
+                    |true -> //Get 4 bits and flip them
+                        let bits = Array.toList bitsArray.[0..3]
+                        bitsArray <- bitsArray.[3..]
+                        bitcount <- bitcount + 4
+                        bits |> List.map (fun x -> if x = 0uy then 1 else 0)
+                    |false -> 
+                        let rec getvalues x = 
+                            match x with
+                            |[] -> (0,[0;0;0;0])
+                            |((hcode,size),value)::tail -> 
+                                if hcode = ((getBits32 size bitsArray) |> int)
+                                    then (size,value)
+                                    else getvalues tail
+                        let (size,values) = quadTable |> getvalues
+                        bitsArray <- bitsArray.[size..]
+                        bitcount <- bitcount + size
+                        values
+                let signs = 
                     let bits = Array.toList bitsArray.[0..3]
                     bitsArray <- bitsArray.[3..]
                     bitcount <- bitcount + 4
-                    bits |> List.map (fun x -> if x = 0uy then 1 else 0)
-                |false -> 
-                    let bits = getBits32 32 bitsArray
-                    let rec getvalues x = 
-                        match x with
-                        |[] -> (0,[0;0;0;0])
-                        |((hcode,size),value)::tail -> 
-                            if hcode = ((bits >>> 32 - size) |> int)
-                                then (size,value)
-                                else getvalues tail
-                    let (size,values) = quadTable |> getvalues
-                    bitsArray <- bitsArray.[size..]
-                    bitcount <- bitcount + size
-                    values
-            let signs = 
-                let bits = Array.toList bitsArray.[0..3]
-                bitsArray <- bitsArray.[3..]
-                bitcount <- bitcount + 4
-                bits
-            
-            signs 
-            |> List.map int
-            |> List.zip quadvalues 
-            |> List.map (fun (x,y) -> (x*y))
+                    bits
+                let result = 
+                    signs 
+                    |> List.map int
+                    |> List.zip quadvalues 
+                    |> List.map (fun (x,y) -> (if y = 1 then -x else x))
+                samplecount <- samplecount + 4
+                result @ getQuadValues (x + 4)
+
 
         //Decode huffman tables
         let limit = granule.bigValues * 2
@@ -284,8 +288,15 @@ module Huffman =
             samplecount <- samplecount + 2
         
         //Decode Quad Values table if applicable
-        samples
-
+        let temp = samplecount
+        let quadSamples = getQuadValues 0
+        match (temp < samplecount) with
+        |false -> 
+            samples
+        |true ->
+            for index = 0 to (samplecount - temp - 1) do
+                samples.[temp + index] <- quadSamples.[index]
+            samples
 
 module Maindata = 
     
@@ -303,6 +314,6 @@ module Maindata =
             let (x,y) = parseScaleFactors (arrayBits.[bitcount..] |> Array.map byte) sideinfo sideinfo.sideInfoGr.[i]
             sclfactors.[i] <- x
             bitcount <- bitcount + y
-            let result = parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) frameinfo sideinfo.sideInfoGr.[i]
+            let result = parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) maxbit frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
         sclfactors
