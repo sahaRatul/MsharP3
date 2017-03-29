@@ -29,5 +29,9 @@ module Test =
 
                 //Requantize
                 let result = requantizeSamples sideconfig.sideInfoGr.[0] frameinfo scalefactors.[0] samples.[0]
+                let result2 = requantizeSamples sideconfig.sideInfoGr.[1] frameinfo scalefactors.[1] samples.[1]
+                let result3 = requantizeSamples sideconfig.sideInfoGr.[2] frameinfo scalefactors.[2] samples.[2]
+                let result4 = requantizeSamples sideconfig.sideInfoGr.[3] frameinfo scalefactors.[3] samples.[3]
+                
                 result |> ignore
         System.Console.ReadLine();
