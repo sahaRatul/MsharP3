@@ -1,6 +1,6 @@
 # (|>) M sharP3
 
-A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motivation for this project is to know how the MP3 algorithm works and get hands on experience on F# language. Plus I'm curious about how .NET framework performs on this particular resource intensive workload.
+A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motivation for this project is to understand how the MP3 algorithm works and get hands on experience on F#. Plus I'm curious about how .NET framework performs on this particular resource intensive workload.
 
 ## Current status
 |Task|Status|
@@ -30,3 +30,6 @@ A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motiva
 * [Let's build an MP3 decoder](http://blog.bjrn.se/2008/10/lets-build-mp3-decoder.html)
 * [MP3 Decoding in C++](http://www.fcreyf.com/11114/mp3-decoding-in-c++)
 * [MP3Sharp](https://github.com/ZaneDubya/MP3Sharp)
+
+## License
+This project is licensed under the MIT License - see the LICENSE file for details
