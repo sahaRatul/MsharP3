@@ -1,11 +1,11 @@
 ﻿FSC = fsc.exe
-FSCFLAGS = --warn:5 -g
+FSCFLAGS = --warn:5
 
 all: *.fs
-	fsc AssemblyInfo.fs Utils.fs Tables.fs Header.fs Sideinfo.fs Frame.fs Maindata.fs Program.fs $(FSCFLAGS)
+	fsc AssemblyInfo.fs Utils.fs Tables.fs Header.fs Sideinfo.fs Frame.fs Maindata.fs MathUtils.fs Program.fs --optimize $(FSCFLAGS)
 
-debug: *.fsx
-	fsc AssemblyInfo.fs Utils.fs Tables.fs Header.fs Sideinfo.fs Frame.fs Maindata.fs Program.fs -g $(FSCFLAGS)
+debug: *.fs
+	fsc AssemblyInfo.fs Utils.fs Tables.fs Header.fs Sideinfo.fs Frame.fs Maindata.fs Program.fs MathUtils.fs -g $(FSCFLAGS)
 
 msbuild:*.fs
 	MSBuild MsharP3.fsproj
