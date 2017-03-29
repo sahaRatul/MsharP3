@@ -63,6 +63,7 @@
     <Compile Include="Sideinfo.fs" />
     <Compile Include="Frame.fs" />
     <Compile Include="Maindata.fs" />
+    <Compile Include="MathUtils.fs" />
     <Compile Include="Program.fs" />
     <None Include="Makefile" />
   </ItemGroup>
