@@ -27,8 +27,8 @@ module ScaleFactors =
     let parseScaleFactors (x:array<byte>) (sideInfoConfig:SideInfoConfig) (y:sideInfoGranule) = 
         let mutable bitcount = 0
         //Keep this for later use
-        let mutable scaleLongGr0Ch1 = Array.zeroCreate 20
-        let mutable scaleLongGr0Ch2 = Array.zeroCreate 20
+        let mutable scaleLongGr0Ch1 = Array.zeroCreate 23
+        let mutable scaleLongGr0Ch2 = Array.zeroCreate 23
 
         let slen = [|
             [|0;0|];[|0;1|];[|0;2|];[|0;3|];[|3;0|];[|1;1|];[|1;2|];[|1;3|];
@@ -103,7 +103,7 @@ module ScaleFactors =
                         granule = y.granule
                         channel = y.channel
                         data = 
-                            let temp = Array.zeroCreate 22
+                            let temp = Array.zeroCreate 23
                             let mutable arr = x
                             for sfb = 0 to 9 do
                                 let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
@@ -125,7 +125,7 @@ module ScaleFactors =
                         granule = y.granule
                         channel = y.channel
                         data = 
-                            let temp = Array.zeroCreate 21
+                            let temp = Array.zeroCreate 23
                             let mutable arr = x
                             let sb = [|5;10;15;20|]
                             let mutable index = 0
