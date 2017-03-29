@@ -304,16 +304,29 @@ module Maindata =
     open Huffman
     
     //Parse Main data from frame
-    let parseMainData (data:array<byte>) (header:HeaderConfig) (sideinfo:SideInfoConfig) = 
+    let parseMainData (data:array<byte>) (header:HeaderConfig) (frameinfo:FrameInfo) (sideinfo:SideInfoConfig) = 
         let arrayBits = data |> Array.map int |> getBitsArrayfromByteArray
         let mutable bitcount = 0
-        let frameinfo = getFrameInfo header
-        let (sclfactors:array<ScaleFactors>) = Array.zeroCreate 4
-        for i = 0 to 3 do
+        let channels = if header.channelMode = 3uy then 1 else 2
+
+        //Create Arrays to store scalefactors and samples
+        let (sclfactors,samples) = 
+            match channels with
+            |1 -> 
+                let (sclfactors:array<ScaleFactors>) = Array.zeroCreate 2
+                let (samples:array<array<int>>) = Array.zeroCreate 2
+                (sclfactors,samples)
+            |_ -> 
+                let (sclfactors:array<ScaleFactors>) = Array.zeroCreate 4
+                let (samples:array<array<int>>) = Array.zeroCreate 4
+                (sclfactors,samples)
+
+        for i = 0 to (if channels = 1 then 1 else 3) do
             let maxbit = bitcount + sideinfo.sideInfoGr.[i].par23Length
             let (x,y) = parseScaleFactors (arrayBits.[bitcount..] |> Array.map byte) sideinfo sideinfo.sideInfoGr.[i]
             sclfactors.[i] <- x
             bitcount <- bitcount + y
-            let result = parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) maxbit frameinfo sideinfo.sideInfoGr.[i]
+            samples.[i] <- parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) maxbit frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
-        sclfactors
+        
+        (sclfactors,samples)
