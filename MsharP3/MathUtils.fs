@@ -6,7 +6,7 @@ open ScaleFactors
 
 module MathUtils = 
     let requantizeSamples (sideConfig:sideInfoGranule) (frameinfo:FrameInfo) (scalefactors:ScaleFactors) (samples:int []) = 
-        let pretab = [|0;0;0;0;0;0;0;0;0;0;0;1;1;1;1;2;2;3;3;3;2|]
+        let pretab = [|0;0;0;0;0;0;0;0;0;0;0;1;1;1;1;2;2;3;3;3;2;0;0|]
         let mutable sfb = 0
         let mutable i = 0
         let mutable window = 0
@@ -41,14 +41,14 @@ module MathUtils =
                     (exp1,exp2)
                 |false -> 
                     let long = frameinfo.bandIndex |> fst
-                    let x = if (sampleindex = long.[sfb+1]) then (sfb + 1) else 0
+                    let x = if (sampleindex = long.[sfb+1]) then 1 else 0
                     sfb <- sfb + x
                     let longscale = 
                         match scalefactors with
                         |Long x -> x
                         |_ -> failwith "Scalefactor type mismatch. Expected longscalefactors"
                     let exp1 = (sideConfig.globalGain - 210) |> float
-                    let exp2 = (longscale.data.[sfb] + (sideConfig.preflag * pretab.[sfb])) |> float
+                    let exp2 = ((longscale.data.[sfb] |> float) * scalefacMult) + ((sideConfig.preflag * pretab.[sfb]) |> float)
                     (exp1,exp2)
             (sampleindex,exponent1,exponent2)
         
