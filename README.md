@@ -1,4 +1,5 @@
 # (|>) M sharP3
+![status](https://travis-ci.org/sahaRatul/MsharP3.svg?branch=master)
 
 A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motivation for this project is to understand how the MP3 algorithm works and get hands on experience on F#. Plus I'm curious about how .NET framework performs on this particular resource intensive workload.
 
