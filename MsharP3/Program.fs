@@ -28,10 +28,20 @@ module Test =
                 //printfn "%d\r" i
 
                 //Requantize
-                let result = requantizeSamples sideconfig.sideInfoGr.[0] frameinfo scalefactors.[0] samples.[0]
+                let result1 = requantizeSamples sideconfig.sideInfoGr.[0] frameinfo scalefactors.[0] samples.[0]
                 let result2 = requantizeSamples sideconfig.sideInfoGr.[1] frameinfo scalefactors.[1] samples.[1]
                 let result3 = requantizeSamples sideconfig.sideInfoGr.[2] frameinfo scalefactors.[2] samples.[2]
                 let result4 = requantizeSamples sideconfig.sideInfoGr.[3] frameinfo scalefactors.[3] samples.[3]
                 
-                result |> ignore
+                //Mid side 
+                let (gr0,gr1) = 
+                    if header.channelMode = 1uy
+                        then 
+                            let samplesgranule0 = decodeMidSide result1 result2
+                            let samplesgranule1 = decodeMidSide result1 result2
+                            (samplesgranule0,samplesgranule1)
+                        else
+                            ([|result1;result2|],[|result3;result4|])
+                         
+                (gr0,gr1) |> ignore
         System.Console.ReadLine();

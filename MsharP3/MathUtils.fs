@@ -64,3 +64,52 @@ module MathUtils =
             [|0..(samples.Length - 1)|] 
             |> Array.map (getExponents >> requantize)
         result
+
+    let decodeMidSide (ch1:array<float>) (ch2:array<float>) = 
+        let sqrt2 = 1.414
+        if ch1.Length <> ch2.Length 
+            then failwith "Array sizes are not equal"
+            else
+                let left = Array.map2 (fun x y -> (x + y)/sqrt2) ch1 ch2
+                let right = Array.map2 (fun x y -> (x + y)/sqrt2) ch1 ch2
+                [|left;right|]
+    
+    let reorderSamples (frameinfo:FrameInfo) (samples:array<float>) = 
+        let mutable total = 0
+        let mutable start = 0
+        let mutable block = 0
+        let temp = Array.zeroCreate 576
+
+        (*for (int sb = 0; sb < 12; sb++) {
+		    const int SB_WIDTH = band_width.short_win[sb];
+		
+		    for (int ss = 0; ss < SB_WIDTH; ss++) {			
+			    samples[start + block + 0] = this->samples[gr][ch][total + ss + SB_WIDTH * 0];
+			    samples[start + block + 6] = this->samples[gr][ch][total + ss + SB_WIDTH * 1];
+			    samples[start + block + 12] = this->samples[gr][ch][total + ss + SB_WIDTH * 2]; 
+
+			    if (block != 0 && block % 5 == 0) { /* 6 * 3 = 18 */
+				    start += 18;
+				    block = 0;
+			    } else
+				    block++;
+		    }
+
+		    total += SB_WIDTH * 3;
+	    }*)
+        let sbWidth = 
+            [|0..11|] 
+            |> Array.map (fun x -> [|0..(snd frameinfo.bandWidth).[x]|])
+        
+        let testfun width ss = 
+            temp.[start + block + 0] <- samples.[total + ss + width * 0]
+            temp.[start + block + 6] <- samples.[total + ss + width * 1]
+            temp.[start + block + 12] <- samples.[total + ss + width * 2]
+            if (block <> 0 && block % 5 = 0) 
+                then
+                    start <- start + 18
+                    block <- 0
+                else
+                    block <- block + 1
+        
+        sbWidth |> Array.map (fun x -> x |> Array.map testfun)
