@@ -7,11 +7,11 @@ open System.Runtime.InteropServices
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[<assembly: AssemblyTitle("FsharpMP3")>]
+[<assembly: AssemblyTitle("MsharP3")>]
 [<assembly: AssemblyDescription("MP3 decoder written in F#")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]
-[<assembly: AssemblyProduct("FsharpMP3")>]
+[<assembly: AssemblyProduct("MsharP3")>]
 [<assembly: AssemblyCopyright("Copyright © 2017 Ratul Saha")>]
 [<assembly: AssemblyTrademark("")>]
 [<assembly: AssemblyCulture("")>]
