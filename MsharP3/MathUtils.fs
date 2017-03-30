@@ -3,9 +3,12 @@
 open Sideinfo
 open Frame
 open ScaleFactors
+open SineTables
 
 module MathUtils = 
-    let requantizeSamples (sideConfig:sideInfoGranule) (frameinfo:FrameInfo) (scalefactors:ScaleFactors) (samples:int []) = 
+    
+    //Requantization
+    let requantizeSamples (frameinfo:FrameInfo) (sideConfig:sideInfoGranule) (scalefactors:ScaleFactors) (samples:int []) = 
         let pretab = [|0;0;0;0;0;0;0;0;0;0;0;1;1;1;1;2;2;3;3;3;2;0;0|]
         let mutable sfb = 0
         let mutable i = 0
@@ -64,7 +67,8 @@ module MathUtils =
             [|0..(samples.Length - 1)|] 
             |> Array.map (getExponents >> requantize)
         result
-
+    
+    //Mid side Band (for joint stereo)
     let decodeMidSide (ch1:array<float>) (ch2:array<float>) = 
         let sqrt2 = 1.414
         if ch1.Length <> ch2.Length 
@@ -74,25 +78,57 @@ module MathUtils =
                 let right = Array.map2 (fun x y -> (x + y)/sqrt2) ch1 ch2
                 [|left;right|]
     
-    let reorderSamples (frameinfo:FrameInfo) (samples:array<float>) = 
+    //Reorder samples
+    let reorderSamples (frameinfo:FrameInfo) (samples:float []) = 
         let mutable total = 0
         let mutable start = 0
         let mutable block = 0
         let temp = Array.zeroCreate 576
 
-        let sbWidth = 
-            [|0..11|] 
-            |> Array.map (fun x -> [|0..(snd frameinfo.bandWidth).[x]|])
+        let test width = 
+            for ss = 0 to width do
+                temp.[start + block + 0] <- samples.[total + ss + width * 0]
+                temp.[start + block + 6] <- samples.[total + ss + width * 1]
+                temp.[start + block + 12] <- samples.[total + ss + width * 2]
+                if (block <> 0 && block % 5 = 0) 
+                    then
+                        start <- start + 18
+                        block <- 0
+                    else
+                        block <- block + 1
+
+        [|0..11|] 
+        |> Array.map (fun x -> (snd frameinfo.bandWidth).[x] - 1)
+        |> Array.map test
+        |> ignore
+
+        temp
+
+    //Alias reduction
+    let reduceAlias (granule:sideInfoGranule) (samples:float []) = 
+        let temp =
+            if samples.Length < 576
+                then failwith "Array length less than 576"
+                else Array.map (fun x -> x) samples
         
-        let testfun width ss = 
-            temp.[start + block + 0] <- samples.[total + ss + width * 0]
-            temp.[start + block + 6] <- samples.[total + ss + width * 1]
-            temp.[start + block + 12] <- samples.[total + ss + width * 2]
-            if (block <> 0 && block % 5 = 0) 
-                then
-                    start <- start + 18
-                    block <- 0
-                else
-                    block <- block + 1
+        let cs = [|
+            0.8574929257;0.8817419973;0.9496286491;0.9833145925;
+            0.9955178161;0.9991605582;0.9998991952;0.9999931551
+        |]
+
+        let ca = [|
+            -0.5144957554;-0.4717319686;-0.3133774542;-0.1819131996;
+            -0.0945741925;-0.0409655829;-0.0141985686;-0.0036999747
+        |]
+
+        let sbMax = if granule.mixedBlockFlag then 1 else 31
         
-        sbWidth |> Array.map (fun x -> x |> Array.map testfun)
+        for sb = 1 to sbMax do
+            for sample = 0 to 7 do
+                let offset1 = 18 * sb - sample - 1
+                let offset2 = 18 * sb + sample
+                let s1 = samples.[offset1]
+                let s2 = samples.[offset2]
+                temp.[offset1] <- s1 * cs.[sample] - s2 * ca.[sample]
+                temp.[offset2] <- s2 * cs.[sample] + s1 * ca.[sample]
+        temp
