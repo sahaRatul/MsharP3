@@ -13,7 +13,7 @@ module Test =
         let data = IO.File.ReadAllBytes "aframe.mp3"
         
         let result = 
-            for i = 0 to 1000 do
+            for i = 0 to 1 do
                 //Get Frame header
                 let header = data.[0..3] |> parseHeader
         
@@ -25,7 +25,7 @@ module Test =
 
                 //Get Maindata
                 let (scalefactors,samples) = parseMainData data.[36..] header frameinfo sideconfig
-                printfn "%d\r" i
+                //printfn "%d\r" i
 
                 //Requantize
                 let result = requantizeSamples sideconfig.sideInfoGr.[0] frameinfo scalefactors.[0] samples.[0]
