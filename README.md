@@ -9,9 +9,10 @@ A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motiva
 |Parse Frame header| **DONE**|
 |Parse Frame Side Information| **DONE**|
 |Parse Main Data |**DONE**|
-|Generate Samples from Main Data| **PENDING**|
-|Metadata handling| **PENDING**|
+|Generate Samples from Main Data| **IN PROGRESS**|
+|Metadata handling| **IN PROGRESS**|
 |Handling proper mp3 files| **PENDING**|
+|Code Optimization| **PENDING**|
 
 ## Build instructions
 ### Windows
