@@ -9,6 +9,7 @@ open MathUtils
 
 module Test = 
     //Test Data
+
     let main = 
         let data = IO.File.ReadAllBytes "aframe.mp3"
         
@@ -25,23 +26,28 @@ module Test =
 
                 //Get Maindata
                 let (scalefactors,samples) = parseMainData data.[36..] header frameinfo sideconfig
-                //printfn "%d\r" i
 
                 //Requantize
-                let result1 = requantizeSamples sideconfig.sideInfoGr.[0] frameinfo scalefactors.[0] samples.[0]
-                let result2 = requantizeSamples sideconfig.sideInfoGr.[1] frameinfo scalefactors.[1] samples.[1]
-                let result3 = requantizeSamples sideconfig.sideInfoGr.[2] frameinfo scalefactors.[2] samples.[2]
-                let result4 = requantizeSamples sideconfig.sideInfoGr.[3] frameinfo scalefactors.[3] samples.[3]
+                let requantizedSamples = Array.map3 (requantizeSamples frameinfo) sideconfig.sideInfoGr scalefactors samples
                 
                 //Mid side 
-                let (gr0,gr1) = 
+                let result = 
                     if header.channelMode = 1uy
-                        then 
-                            let samplesgranule0 = decodeMidSide result1 result2
-                            let samplesgranule1 = decodeMidSide result1 result2
-                            (samplesgranule0,samplesgranule1)
+                        then
+                            let samplesgranule0 = decodeMidSide requantizedSamples.[0] requantizedSamples.[1]
+                            let samplesgranule1 = decodeMidSide requantizedSamples.[2] requantizedSamples.[3]
+                            Array.concat [|samplesgranule0;samplesgranule1|]
                         else
-                            ([|result1;result2|],[|result3;result4|])
-                         
-                (gr0,gr1) |> ignore
+                            requantizedSamples
+                
+                //Reorder/Alias reduction
+                let result2 = Array.zeroCreate 4
+                for i = 0 to (if header.channelMode = 3uy then 1 else 3) do
+                    result2.[i] <-
+                        if (sideconfig.sideInfoGr.[i].mixedBlockFlag || sideconfig.sideInfoGr.[i].blockType = 2) 
+                            then reorderSamples frameinfo result.[i]
+                            else
+                                reduceAlias sideconfig.sideInfoGr.[i] result.[i]
+
+                result2 |> ignore
         System.Console.ReadLine();
