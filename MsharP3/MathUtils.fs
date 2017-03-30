@@ -80,23 +80,6 @@ module MathUtils =
         let mutable block = 0
         let temp = Array.zeroCreate 576
 
-        (*for (int sb = 0; sb < 12; sb++) {
-		    const int SB_WIDTH = band_width.short_win[sb];
-		
-		    for (int ss = 0; ss < SB_WIDTH; ss++) {			
-			    samples[start + block + 0] = this->samples[gr][ch][total + ss + SB_WIDTH * 0];
-			    samples[start + block + 6] = this->samples[gr][ch][total + ss + SB_WIDTH * 1];
-			    samples[start + block + 12] = this->samples[gr][ch][total + ss + SB_WIDTH * 2]; 
-
-			    if (block != 0 && block % 5 == 0) { /* 6 * 3 = 18 */
-				    start += 18;
-				    block = 0;
-			    } else
-				    block++;
-		    }
-
-		    total += SB_WIDTH * 3;
-	    }*)
         let sbWidth = 
             [|0..11|] 
             |> Array.map (fun x -> [|0..(snd frameinfo.bandWidth).[x]|])
