@@ -17,10 +17,11 @@ module Utils =
         x |> Array.map getBits |> Array.concat
 
     //Generate Number from array of bits (x<32 bits
-    let bitsArraytoNumber x = 
+    let bitsArraytoNumber (x:array<int>) = 
         let mutable out = 0
-        for bit in x do
-            out <- (out <<< 1) ||| bit
+        let len = x.Length
+        for i = 0 to (len-1) do
+            out <- (out <<< 1) ||| x.[i]
         out
 
     //Extract bits from a bits array and convert to number
