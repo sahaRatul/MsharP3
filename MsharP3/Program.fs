@@ -50,4 +50,4 @@ module Test =
                                 reduceAlias sideconfig.sideInfoGr.[i] result.[i]
                 printfn "%d" i
                 result2 |> ignore
-        System.Console.ReadLine();
+        result
