@@ -14,7 +14,7 @@ module Test =
         let data = IO.File.ReadAllBytes "aframe.mp3"
         
         let result = 
-            for i = 0 to 1 do
+            for i = 0 to 1000 do
                 //Get Frame header
                 let header = data.[0..3] |> parseHeader
         
@@ -48,6 +48,6 @@ module Test =
                             then reorderSamples frameinfo result.[i]
                             else
                                 reduceAlias sideconfig.sideInfoGr.[i] result.[i]
-
+                printfn "%d" i
                 result2 |> ignore
         System.Console.ReadLine();
