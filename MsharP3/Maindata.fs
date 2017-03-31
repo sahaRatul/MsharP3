@@ -187,7 +187,7 @@ module Huffman =
                     match table with
                     |[] -> (0,0,0,snd x)
                     |head::tail -> 
-                        colindex <- 0
+                        colindex <- -1
                         if Array.exists (fun (value,size) -> (temp <- fst ((getBits2 bitoffset size bitsArray));colindex <- colindex + 1;tempsize <- size;value = temp)) head
                             then
                                 (tempsize,rowindex,colindex,snd x)
