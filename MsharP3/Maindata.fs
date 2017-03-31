@@ -25,7 +25,7 @@ module ScaleFactors =
     |Mixed of (ScaleFactorsShort * ScaleFactorsLong)
 
     let parseScaleFactors (x:array<byte>) (sideInfoConfig:SideInfoConfig) (y:sideInfoGranule) = 
-        let mutable bitcount = 0
+        let mutable bitoffset = 0
         //Keep this for later use
         let mutable scaleLongGr0Ch1 = Array.zeroCreate 23
         let mutable scaleLongGr0Ch2 = Array.zeroCreate 23
@@ -45,12 +45,10 @@ module ScaleFactors =
                         channel = y.channel
                         data = 
                             let temp = Array.zeroCreate 8
-                            let mutable arr = x
                             for i = 0 to 7 do
-                                let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
-                                arr <- tmp
+                                let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
+                                bitoffset <- tmp
                                 temp.[i] <- num
-                            bitcount <- bitcount + (8 * scaleFactorLengths.[0])
                             temp
                     }
                     let (shortScale:ScaleFactorsShort) = {
@@ -58,19 +56,16 @@ module ScaleFactors =
                         channel = y.channel
                         data = 
                             let temp = Array2D.zeroCreate 3 13
-                            let mutable arr = x
                             for sfb = 3 to 5 do
                                 for win = 0 to 2 do
-                                    let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
-                                    arr <- tmp
+                                    let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
+                                    bitoffset <- tmp
                                     temp.[win,sfb] <- num
                             for sfb = 6 to 11 do
                                 for win = 0 to 2 do
-                                    let (num,tmp) = arr |> getBits scaleFactorLengths.[1]
-                                    arr <- tmp
+                                    let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[1]
+                                    bitoffset <- tmp
                                     temp.[win,sfb] <- num
-                            bitcount <- bitcount + (9 * scaleFactorLengths.[0])
-                            bitcount <- bitcount + (18 * scaleFactorLengths.[1])
                             temp
                     }
                     Mixed (shortScale,longScale)
@@ -83,18 +78,16 @@ module ScaleFactors =
                             let mutable arr = x
                             for sfb = 0 to 5 do
                                 for win = 0 to 2 do
-                                    let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
-                                    arr <- tmp
+                                    let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
+                                    bitoffset <- tmp
                                     temp.[win,sfb] <- num
                             for sfb = 6 to 11 do
                                 for win = 0 to 2 do
-                                    let (num,tmp) = arr |> getBits scaleFactorLengths.[1]
-                                    arr <- tmp
+                                    let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[1]
+                                    bitoffset <- tmp
                                     temp.[win,sfb] <- num
                             temp
                     }
-                    bitcount <- bitcount + (18 * scaleFactorLengths.[0])
-                    bitcount <- bitcount + (18 * scaleFactorLengths.[1])
                     Short (shortScale)
             |(_,_) -> //Long scalefactors
                 match y.granule = 0 with
@@ -104,21 +97,19 @@ module ScaleFactors =
                         channel = y.channel
                         data = 
                             let temp = Array.zeroCreate 23
-                            let mutable arr = x
                             for sfb = 0 to 9 do
-                                let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
-                                arr <- tmp
+                                let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
+                                bitoffset <- tmp
                                 temp.[sfb] <- num
                             for sfb = 10 to 19 do
-                                let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
-                                arr <- tmp
+                                let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
+                                bitoffset <- tmp
                                 temp.[sfb] <- num
                             if y.channel = 0 
                                 then scaleLongGr0Ch1 <- temp
                                 else scaleLongGr0Ch2 <- temp
                             temp
                     }
-                    bitcount <- bitcount + 20 * scaleFactorLengths.[0]
                     Long (longScale)
                 |false -> //Granule 1 (maybe with scalefactor reuse)
                     let (longScale:ScaleFactorsLong) = {
@@ -126,7 +117,6 @@ module ScaleFactors =
                         channel = y.channel
                         data = 
                             let temp = Array.zeroCreate 23
-                            let mutable arr = x
                             let sb = [|5;10;15;20|]
                             let mutable index = 0
                             for i = 0 to 1 do
@@ -137,9 +127,8 @@ module ScaleFactors =
                                                         then scaleLongGr0Ch1.[sfb] 
                                                         else scaleLongGr0Ch2.[sfb]
                                     |false -> 
-                                        let (num,tmp) = arr |> getBits scaleFactorLengths.[0]
-                                        arr <- tmp
-                                        bitcount <- bitcount + (1 * scaleFactorLengths.[0])
+                                        let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
+                                        bitoffset <- tmp
                                         temp.[sfb] <- num
                                     index <- sfb
                                 index <- index + 1
@@ -152,16 +141,15 @@ module ScaleFactors =
                                                         then scaleLongGr0Ch1.[sfb] 
                                                         else scaleLongGr0Ch2.[sfb]
                                     |false -> 
-                                        let (num,tmp) = arr |> getBits scaleFactorLengths.[1]
-                                        arr <- tmp
-                                        bitcount <- bitcount + (1 * scaleFactorLengths.[1])
+                                        let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[1]
+                                        bitoffset <- tmp
                                         temp.[sfb] <- num
                                     index <- sfb
                                 index <- index + 1
                             temp
                     }
                     Long (longScale)
-        (result,bitcount)           
+        (result,bitoffset)           
 
 module Huffman = 
     let parseHuffmanData (data:array<byte>) maxbit (frame:FrameInfo) (granule:sideInfoGranule) = 
