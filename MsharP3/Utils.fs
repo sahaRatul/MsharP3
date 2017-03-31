@@ -40,3 +40,9 @@ module Utils =
         let temp = (x.[0..(count-1)])
         let ret = (temp |> Array.map uint32 |> bitsArraytoNumber32)
         ret
+
+    let getBits2 start count (x:array<byte>) = 
+        let result = 
+            x.[start..(start + count - 1)]
+            |> Array.map int |> bitsArraytoNumber
+        (result,start+count)
