@@ -156,7 +156,7 @@ module Huffman =
         
         let samples = Array.zeroCreate 576
         let mutable bitsArray = data
-        let mutable bitcount = 0
+        let mutable bitoffset = 0
         let mutable samplecount = 0
 
         let (region0,region1) = //Get boundaries of sample regions
@@ -176,31 +176,26 @@ module Huffman =
                 |false -> ((getHuffmanTable granule.tableSelect.[2]),(granule.tableSelect.[2]))
 
         let decodeTable x = //x = huffman table
+            let mutable temp = 0
+            let mutable tempsize = 0
+            let mutable colindex = 0
+            
             match (snd x) with
             |0 -> (0,0,0,0) //Sample = 0 for table0
             |_ -> 
-                let rec checkInTable table rowindex = 
+                let rec checkInTable (table:((int * int) array List)) rowindex = 
                     match table with
                     |[] -> (0,0,0,snd x)
                     |head::tail -> 
-                        if List.exists (fun (value,size) -> (value = ((getBits32 size bitsArray) |> int))) head
-                            then 
-                                (
-                                    //Size
-                                    head.[List.findIndex (fun (value,size) -> (value = ((getBits32 size bitsArray) |> int))) head] |> snd,
-                                    //Row
-                                    rowindex,
-                                    //Col
-                                    List.findIndex (fun (value,size) -> (value = ((getBits32 size bitsArray) |> int))) head,
-                                    //Table number
-                                    snd x
-                                )
+                        colindex <- 0
+                        if Array.exists (fun (value,size) -> (temp <- fst ((getBits2 bitoffset size bitsArray));colindex <- colindex + 1;tempsize <- size;value = temp)) head
+                            then
+                                (tempsize,rowindex,colindex,snd x)
                             else
                                 checkInTable tail (rowindex + 1)
 
                 let (size,row,col,num) = checkInTable (fst x) 0
-                bitcount <- bitcount + size
-                if size <> 0 then bitsArray <- bitsArray.[size..]
+                bitoffset <- bitoffset + size
                 (size,row,col,num)
         
         let getSample x = //x = output from decodeTable
@@ -212,17 +207,15 @@ module Huffman =
                     let linbit = 
                         match bigValueLinbit.[num] <> 0, value = (bigValueMax.[num] - 1) with
                         |(true,true) -> 
-                            let (bits,temp) = getBits bigValueLinbit.[num] bitsArray
-                            bitcount <- bitcount + bigValueLinbit.[num]
-                            bitsArray <- temp
+                            let (bits,temp) = getBits2 bitoffset bigValueLinbit.[num] bitsArray
+                            bitoffset <- temp
                             bits
                         |(_,_) -> 0
                     let sign = 
                         if value > 0 
                             then 
-                                let (bits,temp) = getBits 1 bitsArray
-                                bitcount <- bitcount + 1
-                                bitsArray <- temp
+                                let (bits,temp) = getBits2 bitoffset 1 bitsArray
+                                bitoffset <- temp
                                 if bits = 1 then -1 else 1
                             else
                                 1
@@ -231,7 +224,7 @@ module Huffman =
         
         //QuadTables
         let rec getQuadValues x = 
-            match((bitcount < maxbit) && ((samplecount + 4) < 576)) with
+            match((bitoffset < maxbit) && ((samplecount + 4) < 576)) with
             |false -> []
             |true -> 
                 let quadvalues = 
@@ -239,7 +232,7 @@ module Huffman =
                     |true -> //Get 4 bits and flip them
                         let bits = Array.toList bitsArray.[0..3]
                         bitsArray <- bitsArray.[3..]
-                        bitcount <- bitcount + 4
+                        bitoffset <- bitoffset + 4
                         bits |> List.map (fun x -> if x = 0uy then 1 else 0)
                     |false -> 
                         let rec getvalues x = 
@@ -251,12 +244,12 @@ module Huffman =
                                     else getvalues tail
                         let (size,values) = quadTable |> getvalues
                         bitsArray <- bitsArray.[size..]
-                        bitcount <- bitcount + size
+                        bitoffset <- bitoffset + size
                         values
                 let signs = 
                     let bits = Array.toList bitsArray.[0..3]
                     bitsArray <- bitsArray.[3..]
-                    bitcount <- bitcount + 4
+                    bitoffset <- bitoffset + 4
                     bits
                 let result = 
                     signs 
