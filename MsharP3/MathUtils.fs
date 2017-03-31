@@ -69,7 +69,7 @@ module MathUtils =
         result
     
     //Mid side Band (for joint stereo)
-    let decodeMidSide (ch1:array<float>) (ch2:array<float>) = 
+    let decodeMidSide (ch1:float []) (ch2:float []) = 
         let sqrt2 = 1.414
         if ch1.Length <> ch2.Length 
             then failwith "Array sizes are not equal"
@@ -103,7 +103,7 @@ module MathUtils =
         |> ignore
 
         temp
-
+    
     //Alias reduction
     let reduceAlias (granule:sideInfoGranule) (samples:float []) = 
         let temp =
