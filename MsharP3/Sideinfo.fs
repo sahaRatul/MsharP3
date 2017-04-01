@@ -36,7 +36,7 @@ module Sideinfo =
         //Outer function
         let getSideGranule channels granule data = 
             //Inner Function
-            let extractGranule (x:array<int>) gr ch = 
+            let extractGranule (x:array<byte>) gr ch = 
                 //Actual data
                 let (granule:sideInfoGranule) = {
                     granule = gr
@@ -46,17 +46,17 @@ module Sideinfo =
                     globalGain = x.[21..28] |> bitsArraytoNumber
                     scaleFactorCompress = x.[29..32] |> bitsArraytoNumber
                     windowSwitchFlag = 
-                        if x.[33] = 1 then true else false
+                        if x.[33] = 1uy then true else false
                     blockType = 
-                        if x.[33] = 1 then x.[34..35] |> bitsArraytoNumber
+                        if x.[33] = 1uy then x.[34..35] |> bitsArraytoNumber
                         else 0
                     mixedBlockFlag = 
-                        if x.[33] = 1 
-                            then x.[36] |> (fun x -> if x = 1 then true else false)
+                        if x.[33] = 1uy 
+                            then x.[36] |> (fun x -> if x = 1uy then true else false)
                         else 
                             false
                     tableSelect = 
-                        if x.[33] = 1
+                        if x.[33] = 1uy
                             then [|x.[37..41] |> bitsArraytoNumber ;x.[42..46] |> bitsArraytoNumber|]
                         else
                             [|
@@ -65,7 +65,7 @@ module Sideinfo =
                             x.[44..48] |> bitsArraytoNumber
                             |]
                     subBlockGain = 
-                        if x.[33] = 1 
+                        if x.[33] = 1uy 
                             then [|
                                     x.[47..49] |> bitsArraytoNumber
                                     x.[50..52] |> bitsArraytoNumber
@@ -74,22 +74,22 @@ module Sideinfo =
                         else
                             null
                     region0Count = 
-                        if x.[33] = 1
+                        if x.[33] = 1uy
                             then if (x.[34..35] |> bitsArraytoNumber) = 2 
                                     then 8 
                                     else 7
                         else
                             x.[49..52] |> bitsArraytoNumber
                     region1Count = 
-                        if x.[33] = 1
+                        if x.[33] = 1uy
                             then 20 - (if (x.[34..35] |> bitsArraytoNumber) = 2 
                                             then 8 
                                             else 7)
                         else
                             x.[53..55] |> bitsArraytoNumber
-                    preflag = x.[56]
-                    scaleFactorScale = x.[57]
-                    count1TableSelect = x.[58]
+                    preflag = x.[56] |> int
+                    scaleFactorScale = x.[57] |> int
+                    count1TableSelect = x.[58] |> int
                 }
                 granule
             
@@ -107,11 +107,11 @@ module Sideinfo =
 
         match (x.Length,y.channelMode) with
         |(17,3uy) -> //For mono
-            let bitArray = x |> Array.map int |> getBitsArrayfromByteArray
+            let bitArray = x |> getBitsArrayfromByteArray
             let (configs:SideInfoConfig) = {
                 mainDataBegin = bitArray.[0..8] |> bitsArraytoNumber
                 privateBits = bitArray.[9..13] |> bitsArraytoNumber
-                scfsi = [|bitArray.[14..17]|] 
+                scfsi = [|bitArray.[14..17] |> Array.map int|] 
                 sideInfoGr = 
                     [|
                         (bitArray.[18..] |> getSideGranule y.channelMode 0).[0]
@@ -120,11 +120,11 @@ module Sideinfo =
             }
             configs
         |(32,0uy)|(32,1uy)|(32,2uy) -> //For dual channel modes
-            let bitArray = x |> Array.map int |> getBitsArrayfromByteArray
+            let bitArray = x |> getBitsArrayfromByteArray
             let (configs:SideInfoConfig) = {
                 mainDataBegin = bitArray.[0..8] |> bitsArraytoNumber
                 privateBits = bitArray.[9..11] |> bitsArraytoNumber
-                scfsi = [|bitArray.[12..15];bitArray.[16..19]|]
+                scfsi = [|bitArray.[12..15] |> Array.map int;bitArray.[16..19] |> Array.map int|]
                 sideInfoGr = 
                     [|
                         (bitArray.[20..] |> getSideGranule y.channelMode 0).[0]
