@@ -42,19 +42,22 @@ module Header =
         match x.Length = 4 with
         |false -> failwith "Not 4 bytes of header"
         |true -> 
-            let bits = x |> Array.map int |> getBitsArrayfromByteArray
+            let bits = x |> getBitsArrayfromByteArray
             let (config:HeaderConfig) = {
-                audioVersion = bits.[12] |> byte;
+                audioVersion = bits.[12];
                 layerDesc = bits.[13..14] |> bitsArraytoNumber |> byte;
-                protection = if bits.[15] = 0 then false else true;
-                bitRate = bits.[16..19] |> bitsArraytoNumber |> getBitrate (bits.[12],bits.[13..14] |> bitsArraytoNumber);
-                sampleRate = bits.[20..21] |> bitsArraytoNumber |> getSamplerate bits.[12]
-                padding = if bits.[22] = 0 then false else true;
-                privateBit = bits.[23];
+                protection = if bits.[15] = 0uy then false else true;
+                bitRate = 
+                    bits.[16..19]  
+                    |> bitsArraytoNumber 
+                    |> getBitrate (bits.[12] |> int,bits.[13..14] |> bitsArraytoNumber);
+                sampleRate = bits.[20..21] |> bitsArraytoNumber |> getSamplerate (bits.[12] |> int)
+                padding = if bits.[22] = 0uy then false else true;
+                privateBit = bits.[23] |> int;
                 channelMode = bits.[24..25] |> bitsArraytoNumber |> byte;
                 modeExtension = bits.[26..27] |> bitsArraytoNumber |> byte;
-                copyright = if bits.[28] = 0 then false else true;
-                original = if bits.[29] = 0 then false else true;
+                copyright = if bits.[28] = 0uy then false else true;
+                original = if bits.[29] = 0uy then false else true;
                 emphasis = bits.[30..31] |> bitsArraytoNumber |> byte
             }
             config
