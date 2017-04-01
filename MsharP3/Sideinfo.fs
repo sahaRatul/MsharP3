@@ -49,7 +49,7 @@ module Sideinfo =
                         if x.[33] = 1 then true else false
                     blockType = 
                         if x.[33] = 1 then x.[34..35] |> bitsArraytoNumber
-                        else 100000
+                        else 0
                     mixedBlockFlag = 
                         if x.[33] = 1 
                             then x.[36] |> (fun x -> if x = 1 then true else false)
