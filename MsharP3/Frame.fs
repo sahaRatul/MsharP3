@@ -70,7 +70,7 @@ module Frame =
             |(_,_) -> failwith "Error while getting framesize"
         
         let (frameinfo:FrameInfo) = {
-            frameSize = (samplesCount / 8) * x.bitRate * x.sampleRate
+            frameSize = (144 * x.bitRate) / x.sampleRate + (if x.padding then 1 else 0)
             bandWidth = getBandWidth x.sampleRate
             bandIndex = getBandIndex x.sampleRate
         }
