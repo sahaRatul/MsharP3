@@ -188,7 +188,9 @@ module Huffman =
                     |[] -> (0,0,0,snd x)
                     |head::tail -> 
                         colindex <- -1
-                        if Array.exists (fun (value,size) -> (temp <- fst ((getBits2 bitoffset size bitsArray));colindex <- colindex + 1;tempsize <- size;value = temp)) head
+                        if Array.exists 
+                            (fun (value,size) -> 
+                                (temp <- fst ((getBits2 bitoffset size bitsArray));colindex <- colindex + 1;tempsize <- size;value = temp)) head
                             then
                                 (tempsize,rowindex,colindex,snd x)
                             else
@@ -230,8 +232,7 @@ module Huffman =
                 let quadvalues = 
                     match granule.count1TableSelect = 1 with
                     |true -> //Get 4 bits and flip them
-                        let bits = Array.toList bitsArray.[0..3]
-                        bitsArray <- bitsArray.[3..]
+                        let bits = Array.toList bitsArray.[bitoffset..bitoffset+3]
                         bitoffset <- bitoffset + 4
                         bits |> List.map (fun x -> if x = 0uy then 1 else 0)
                     |false -> 
@@ -239,16 +240,14 @@ module Huffman =
                             match x with
                             |[] -> (0,[0;0;0;0])
                             |((hcode,size),value)::tail -> 
-                                if hcode = ((getBits32 size bitsArray) |> int)
+                                if hcode = ((getBits32 bitoffset size bitsArray) |> fst |> int)
                                     then (size,value)
                                     else getvalues tail
                         let (size,values) = quadTable |> getvalues
-                        bitsArray <- bitsArray.[size..]
                         bitoffset <- bitoffset + size
                         values
                 let signs = 
-                    let bits = Array.toList bitsArray.[0..3]
-                    bitsArray <- bitsArray.[3..]
+                    let bits = Array.toList bitsArray.[bitoffset..bitoffset + 3]
                     bitoffset <- bitoffset + 4
                     bits
                 let result = 
@@ -307,7 +306,7 @@ module Maindata =
             let (x,y) = parseScaleFactors (arrayBits.[bitcount..] |> Array.map byte) sideinfo sideinfo.sideInfoGr.[i]
             sclfactors.[i] <- x
             bitcount <- bitcount + y
-            samples.[i] <- parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) maxbit frameinfo sideinfo.sideInfoGr.[i]
+            samples.[i] <- parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) sideinfo.sideInfoGr.[i].par23Length frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
         
         (sclfactors,samples)
