@@ -132,3 +132,46 @@ module MathUtils =
                 temp.[offset1] <- s1 * cs.[sample] - s2 * ca.[sample]
                 temp.[offset2] <- s2 * cs.[sample] + s1 * ca.[sample]
         temp
+    
+    //Inverse Modified Discrete Cosine Transform
+    let IMDCT (granule:sideInfoGranule) (samples:float []) = 
+        
+        let PI = 3.141592653589793
+        let N = if granule.blockType = 2 then 12 else 36
+        let halfN = N/2
+        let output = samples
+        let winMax = if granule.blockType = 2 then 2 else 0
+        let sampleBlock = Array.create 36 0.0
+        let prevSamples = Array3D.create 2 32 18 0.0
+        let mutable sample = 0
+
+        for block = 0 to 31 do
+            for win = 0 to winMax do
+                for i = 0 to (N - 1) do
+                    let mutable xi = 0.0
+                    for k = 0 to (halfN - 1) do
+                        let s = output.[18 * block + halfN * win + k];
+                        xi <- xi + s * cos((PI / ((2 * N) |> float)) * ((2 * i + 1 + halfN) |> float) * ((2 * k + 1) |> float));
+                    sampleBlock.[win * N + i] <- xi * sineblock.[granule.blockType].[i]
+
+            if granule.blockType = 2 then
+                let tempBlock = sampleBlock
+                for i = 0 to 5 do
+                    sampleBlock.[i] <- 0.0
+                for i = 6 to 11 do
+                    sampleBlock.[i] <- tempBlock.[0 + i - 6]
+                for i = 12 to 17 do
+                    sampleBlock.[i] <- tempBlock.[0 + i - 6] + tempBlock.[12 + i - 12]
+                for i = 18 to 23 do
+                    sampleBlock.[i] <- tempBlock.[12 + i - 12] + tempBlock.[24 + i - 18]
+                for i = 24 to 29 do
+                    sampleBlock.[i] <- tempBlock.[24 + i - 18]
+                for i = 30 to 35 do
+                    sampleBlock.[i] <- 0.0
+             
+            for i = 0 to 17 do
+                output.[sample + i] <- sampleBlock.[i] + prevSamples.[granule.channel,block,i]
+                prevSamples.[granule.channel,block,i] <- sampleBlock.[18 + i]
+
+            sample <- sample + 18
+        output
