@@ -37,10 +37,10 @@ module Utils =
             out <- (out <<< 1) ||| bit
         out
 
-    let getBits32 count (x:array<byte>) = 
-        let temp = (x.[0..(count-1)])
+    let getBits32 start count (x:array<byte>) = 
+        let temp = (x.[start..(start + count-1)])
         let ret = (temp |> Array.map uint32 |> bitsArraytoNumber32)
-        ret
+        (ret,start + count)
 
     let getBits2 start count (x:array<byte>) = 
         let result = 
