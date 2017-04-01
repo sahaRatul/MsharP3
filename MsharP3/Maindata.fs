@@ -152,11 +152,11 @@ module ScaleFactors =
         (result,bitoffset)           
 
 module Huffman = 
-    let parseHuffmanData (data:array<byte>) maxbit (frame:FrameInfo) (granule:sideInfoGranule) = 
+    let parseHuffmanData (data:array<byte>) offset maxbit (frame:FrameInfo) (granule:sideInfoGranule) = 
         
         let samples = Array.zeroCreate 576
         let mutable bitsArray = data
-        let mutable bitoffset = 0
+        let mutable bitoffset = offset
         let mutable samplecount = 0
 
         let (region0,region1) = //Get boundaries of sample regions
@@ -285,7 +285,7 @@ module Maindata =
     
     //Parse Main data from frame
     let parseMainData (data:array<byte>) (header:HeaderConfig) (frameinfo:FrameInfo) (sideinfo:SideInfoConfig) = 
-        let arrayBits = data |> Array.map int |> getBitsArrayfromByteArray
+        let arrayBits = data |> getBitsArrayfromByteArray
         let mutable bitcount = 0
         let channels = if header.channelMode = 3uy then 1 else 2
 
@@ -303,10 +303,10 @@ module Maindata =
 
         for i = 0 to (if channels = 1 then 1 else 3) do
             let maxbit = bitcount + sideinfo.sideInfoGr.[i].par23Length
-            let (x,y) = parseScaleFactors (arrayBits.[bitcount..] |> Array.map byte) sideinfo sideinfo.sideInfoGr.[i]
+            let (x,y) = parseScaleFactors arrayBits.[bitcount..] sideinfo sideinfo.sideInfoGr.[i]
             sclfactors.[i] <- x
             bitcount <- bitcount + y
-            samples.[i] <- parseHuffmanData (arrayBits.[bitcount..] |> Array.map byte) sideinfo.sideInfoGr.[i].par23Length frameinfo sideinfo.sideInfoGr.[i]
+            samples.[i] <- parseHuffmanData arrayBits bitcount sideinfo.sideInfoGr.[i].par23Length frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
         
         (sclfactors,samples)
