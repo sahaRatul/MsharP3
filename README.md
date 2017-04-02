@@ -6,13 +6,14 @@ A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motiva
 ## Current status
 |Task|Status|
 |:----:|:------:|
-|Parse Frame header| **DONE**|
-|Parse Frame Side Information| **DONE**|
+|Parse Frame header|**DONE**|
+|Parse Frame Side Information|**DONE**|
 |Parse Main Data |**DONE**|
-|Generate Samples from Main Data| **IN PROGRESS**|
-|Metadata handling| **IN PROGRESS**|
-|Handling proper mp3 files| **PENDING**|
-|Code Optimization| **PENDING**|
+|Generate Samples from Main Data|**DONE**|
+|Suppress Noise|**IN PROGRESS**|
+|Metadata handling|**IN PROGRESS**|
+|Handling proper mp3 files|**IN PROGRESS**|
+|Code Optimization|**IN PROGRESS**|
 
 ## Build instructions
 ### Windows
@@ -22,9 +23,9 @@ A MPEG 1 Layer III aka MP3 decoder programmed in F# language. The primary motiva
 **Method 2**: You can also use Visual Studio 2017.
 
 ### Linux (Untested)
-**Method 1**: Get Mono and GNU Make from your distributions package repository. Then follow Method 1 for windows.
+**Method 1**: Get Mono and xbuild from your distributions package repository. Then `cd` to the project directory and type `xbuild MsharP3.sln` to build.
 
-**Method 2**: Get .NET core tools for linux and GNU Make. cd to the MSharP3 directory and type `make msbuild` to build.
+**Method 2**: Get .NET core tools for linux and GNU Make. `cd` to the MSharP3 directory and type `make msbuild` to build.
 
 ## References
 * [ISO 11172:3](https://www.iso.org/standard/22412.html)
