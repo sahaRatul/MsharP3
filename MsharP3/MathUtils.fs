@@ -4,6 +4,7 @@ open Sideinfo
 open Frame
 open ScaleFactors
 open SineTables
+open SynthTables
 
 module MathUtils = 
     
@@ -83,13 +84,13 @@ module MathUtils =
         let mutable total = 0
         let mutable start = 0
         let mutable block = 0
-        let temp = Array.zeroCreate 576
+        let output = Array.zeroCreate 576
 
         let test width = 
             for ss = 0 to width do
-                temp.[start + block + 0] <- samples.[total + ss + width * 0]
-                temp.[start + block + 6] <- samples.[total + ss + width * 1]
-                temp.[start + block + 12] <- samples.[total + ss + width * 2]
+                output.[start + block + 0] <- samples.[total + ss + width * 0]
+                output.[start + block + 6] <- samples.[total + ss + width * 1]
+                output.[start + block + 12] <- samples.[total + ss + width * 2]
                 if (block <> 0 && block % 5 = 0) 
                     then
                         start <- start + 18
@@ -102,11 +103,11 @@ module MathUtils =
         |> Array.map test
         |> ignore
 
-        temp
+        output
     
     //Alias reduction
     let reduceAlias (granule:sideInfoGranule) (samples:float []) = 
-        let temp =
+        let output =
             if samples.Length < 576
                 then failwith "Array length less than 576"
                 else Array.map (fun x -> x) samples
@@ -129,9 +130,9 @@ module MathUtils =
                 let offset2 = 18 * sb + sample
                 let s1 = samples.[offset1]
                 let s2 = samples.[offset2]
-                temp.[offset1] <- s1 * cs.[sample] - s2 * ca.[sample]
-                temp.[offset2] <- s2 * cs.[sample] + s1 * ca.[sample]
-        temp
+                output.[offset1] <- s1 * cs.[sample] - s2 * ca.[sample]
+                output.[offset2] <- s2 * cs.[sample] + s1 * ca.[sample]
+        output
     
     //Inverse Modified Discrete Cosine Transform
     let IMDCT (granule:sideInfoGranule) (samples:float []) = 
@@ -174,4 +175,68 @@ module MathUtils =
                 prevSamples.[granule.channel,block,i] <- sampleBlock.[18 + i]
 
             sample <- sample + 18
+
+        let mutable sb = 1
+        let mutable i = 1
+        while sb < 18 do
+            while i < 32 do
+                output.[i * 18 + sb] <- output.[i * 18 + sb] * -1.0;
+                i <- i + 2
+            i <- 1
+            sb <- sb + 2
+
+        (*
+        for (int sb = 1; sb < 18; sb += 2)
+		for (int i = 1; i < 32; i += 2)
+			samples[gr][ch][i * 18 + sb] *= -1;
+        *)
         output
+    
+    let fifo = Array2D.create 2 1024 0.0 //For storing filterbank data
+    let synthFilter (granule:sideInfoGranule) (samples:float []) = 
+        
+        let S = Array.create 032 0.0
+        let U = Array.create 512 0.0
+        let W = Array.create 512 0.0   
+        let channel = granule.channel
+
+        let pcm = Array.create 576 0.0
+
+        for sb = 0 to 17 do
+            for i = 0 to 31 do
+                S.[i] <- samples.[i * 18 + sb]
+                
+            for i = 1023 downto 64 do
+                fifo.[channel,i] <- fifo.[channel,i - 64]
+            
+            for i = 0 to 63 do
+                fifo.[channel,i] <- 0.0
+                for j = 0 to 31 do
+                    fifo.[channel,i] <- fifo.[channel,i] + (S.[j] * lookup.[i].[j])
+
+            for i = 0 to 7 do
+                for j = 0 to 31 do
+                    U.[i * 64 + j] <- fifo.[channel,i * 128 + j]
+                    U.[i * 64 + j + 32] <- fifo.[channel,i * 128 + j + 96]
+
+            for i = 0 to 511 do
+                W.[i] <- U.[i] * synthWindow.[i]
+
+            for i = 0 to 31 do
+                let mutable sum = 0.0
+                for j = 0 to 15 do
+                    sum <- sum + W.[j * 32 + i];
+                pcm.[32 * sb + i] <- sum
+        pcm |> Array.map float32
+
+    let interleaveSamples (samples:float32 [][]) = 
+        let mutable i1 = -1
+        let mutable i2 = -1
+        let result = 
+            match samples.Length < 2 with
+            |true -> failwith "Samples from 2 channels required"
+            |false -> 
+                [|0..1151|] 
+                |> Array.map (fun x -> if (x &&& 0x01) = 0 then i1 <- i1 + 1;samples.[0].[i1] else i2 <- i2 + 1;samples.[1].[i2])
+        result
+                
