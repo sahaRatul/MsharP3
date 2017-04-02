@@ -6,6 +6,7 @@ open Sideinfo
 open Maindata
 open Frame
 open MathUtils
+open System.IO
 
 module Test = 
     //Test Data
@@ -13,6 +14,8 @@ module Test =
         let data = IO.File.ReadAllBytes "Again.mp3"
         let mutable offset = 0
         let mutable count = 0
+        let writer = new BinaryWriter(new FileStream("out.wav", FileMode.Create))
+
         while offset < data.Length do
             //Get Frame header
             let header = data.[offset..(3 + offset)] |> parseHeader
@@ -54,6 +57,23 @@ module Test =
             
             //IMDCT
             let result3 = Array.map2 (fun x y -> IMDCT x y) sideconfig.sideInfoGr result2
+
+            //Synth Filter
+            let result4 = Array.map2 (fun x y -> synthFilter x y) sideconfig.sideInfoGr result3
+
+            //Interleave
+            let pcm = 
+                if header.channelMode = 3uy
+                    then
+                        Array.concat result4
+                    else
+                        let result5 = interleaveSamples result4.[0..1]
+                        let result6 = interleaveSamples result4.[2..3]
+                        Array.concat [|result5;result6|]
+
+            Array.map (fun (x:float32) -> writer.Write(x)) pcm |> ignore
             printfn "Count = %d" count
             count <- count + 1
             result2 |> ignore
+
+        writer.Close()
