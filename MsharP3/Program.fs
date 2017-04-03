@@ -30,7 +30,7 @@ module Test =
             let frameinfo = getFrameInfo header
 
             //Get Maindata
-            let (scalefactors,samples) = parseMainData data.[offset..(offset + frameinfo.frameSize - 1 - sideinfosize)] header frameinfo sideconfig
+            let (scalefactors,samples) = parseMainData data.[offset..(offset + frameinfo.frameSize - 6 - sideinfosize)] header frameinfo sideconfig
             offset <- offset + frameinfo.frameSize - 4 - sideinfosize - 1
 
             //Requantize
@@ -63,16 +63,15 @@ module Test =
 
             //Interleave
             let pcm = 
-                if header.channelMode = 3uy
-                    then
-                        Array.concat result4
-                    else
-                        let result5 = interleaveSamples result4.[0..1]
-                        let result6 = interleaveSamples result4.[2..3]
-                        Array.concat [|result5;result6|]
+                match header.channelMode = 3uy with
+                |true -> Array.concat result4
+                |false -> 
+                    let result5 = interleaveSamples result4.[0..1]
+                    let result6 = interleaveSamples result4.[2..3]
+                    Array.concat [|result5;result6|]
 
             Array.map (fun (x:float32) -> writer.Write(x)) pcm |> ignore
-            printfn "Count = %d" count
+            Console.Write("Frames decoded : "+ (count.ToString()) + "\r")
             count <- count + 1
             result2 |> ignore
 
