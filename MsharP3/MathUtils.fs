@@ -110,7 +110,7 @@ module MathUtils =
         let output =
             if samples.Length < 576
                 then failwith "Array length less than 576"
-                else Array.map (fun x -> x) samples
+                else samples
         
         let cs = [|
             0.8574929257;0.8817419973;0.9496286491;0.9833145925;
@@ -128,10 +128,10 @@ module MathUtils =
             for sample = 0 to 7 do
                 let offset1 = 18 * sb - sample - 1
                 let offset2 = 18 * sb + sample
-                let s1 = samples.[offset1]
-                let s2 = samples.[offset2]
-                output.[offset1] <- s1 * cs.[sample] - s2 * ca.[sample]
-                output.[offset2] <- s2 * cs.[sample] + s1 * ca.[sample]
+                let s1 = output.[offset1]
+                let s2 = output.[offset2]
+                output.[offset1] <- (s1 * cs.[sample]) - (s2 * ca.[sample])
+                output.[offset2] <- (s2 * cs.[sample]) + (s1 * ca.[sample])
         output
     
     //Inverse Modified Discrete Cosine Transform
@@ -184,12 +184,6 @@ module MathUtils =
                 i <- i + 2
             i <- 1
             sb <- sb + 2
-
-        (*
-        for (int sb = 1; sb < 18; sb += 2)
-		for (int i = 1; i < 32; i += 2)
-			samples[gr][ch][i * 18 + sb] *= -1;
-        *)
         output
     
     let fifo = Array2D.create 2 1024 0.0 //For storing filterbank data

@@ -11,10 +11,10 @@ open System.IO
 module Test = 
     //Test Data
     let main = 
-        let data = IO.File.ReadAllBytes "Again.mp3"
+        let data = IO.File.ReadAllBytes "aframe.mp3"
         let mutable offset = 0
         let mutable count = 0
-        let writer = new BinaryWriter(new FileStream("out.wav", FileMode.Create))
+        let writer = new BinaryWriter(new FileStream("out.pcm", FileMode.Create))
 
         while offset < data.Length do
             //Get Frame header

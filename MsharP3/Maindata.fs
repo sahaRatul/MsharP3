@@ -313,7 +313,7 @@ module Maindata =
             let (x,y) = parseScaleFactors arrayBits.[bitcount..] sideinfo sideinfo.sideInfoGr.[i]
             sclfactors.[i] <- x
             bitcount <- bitcount + y
-            samples.[i] <- parseHuffmanData arrayBits bitcount sideinfo.sideInfoGr.[i].par23Length frameinfo sideinfo.sideInfoGr.[i]
+            samples.[i] <- parseHuffmanData arrayBits bitcount (sideinfo.sideInfoGr.[i].par23Length + bitcount) frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
         
         (sclfactors,samples)
