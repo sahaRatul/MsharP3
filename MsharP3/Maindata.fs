@@ -247,8 +247,16 @@ module Huffman =
                         bitoffset <- bitoffset + size
                         values
                 let signs = 
-                    let bits = Array.toList bitsArray.[bitoffset..bitoffset + 3]
-                    bitoffset <- bitoffset + 4
+                    let count1 = quadvalues |> List.fold (fun acc x -> acc + x) 0
+                    let bits2 = Array.toList bitsArray.[bitoffset..bitoffset + count1 - 1]
+                    let mutable i = -1
+                    let bits = quadvalues |> List.map (fun x -> 
+                                                            let res = 
+                                                                if x = 0 
+                                                                    then 0 
+                                                                    else i <- i + 1;bits2.[i] |> int
+                                                            res)
+                    bitoffset <- bitoffset + count1
                     bits
                 let result = 
                     signs 
@@ -257,7 +265,6 @@ module Huffman =
                     |> List.map (fun (x,y) -> (if y = 1 then -x else x))
                 samplecount <- samplecount + 4
                 result @ getQuadValues (x + 4)
-
 
         //Decode huffman tables
         let limit = granule.bigValues * 2
