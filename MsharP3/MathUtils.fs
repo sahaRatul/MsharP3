@@ -135,6 +135,7 @@ module MathUtils =
         output
     
     //Inverse Modified Discrete Cosine Transform
+    let prevSamples = Array3D.create 2 32 18 0.0
     let IMDCT (granule:sideInfoGranule) (samples:float []) = 
         
         let PI = 3.141592653589793
@@ -143,7 +144,6 @@ module MathUtils =
         let output = samples
         let winMax = if granule.blockType = 2 then 2 else 0
         let sampleBlock = Array.create 36 0.0
-        let prevSamples = Array3D.create 2 32 18 0.0
         let mutable sample = 0
 
         for block = 0 to 31 do
