@@ -258,6 +258,10 @@ module Huffman =
                                                             res)
                     bitoffset <- bitoffset + count1
                     bits
+                    //Can do this too
+                    (*let bits = Array.toList bitsArray.[bitoffset..bitoffset+3]
+                    bitoffset < bitoffset + 4
+                    bits*)
                 let result = 
                     signs 
                     |> List.map int
