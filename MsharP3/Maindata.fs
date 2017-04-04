@@ -27,8 +27,8 @@ module ScaleFactors =
     let parseScaleFactors (x:array<byte>) (sideInfoConfig:SideInfoConfig) (y:sideInfoGranule) = 
         let mutable bitoffset = 0
         //Keep this for later use
-        let mutable scaleLongGr0Ch1 = Array.zeroCreate 23
-        let mutable scaleLongGr0Ch2 = Array.zeroCreate 23
+        let mutable scaleLongGr0Ch1 = Array.zeroCreate 22
+        let mutable scaleLongGr0Ch2 = Array.zeroCreate 22
 
         let slen = [|
             [|0;0|];[|0;1|];[|0;2|];[|0;3|];[|3;0|];[|1;1|];[|1;2|];[|1;3|];
@@ -96,13 +96,13 @@ module ScaleFactors =
                         granule = y.granule
                         channel = y.channel
                         data = 
-                            let temp = Array.zeroCreate 23
-                            for sfb = 0 to 9 do
+                            let temp = Array.zeroCreate 22
+                            for sfb = 0 to 10 do
                                 let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
                                 bitoffset <- tmp
                                 temp.[sfb] <- num
-                            for sfb = 10 to 19 do
-                                let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[0]
+                            for sfb = 11 to 20 do
+                                let (num,tmp) = x |> getBits2 bitoffset scaleFactorLengths.[1]
                                 bitoffset <- tmp
                                 temp.[sfb] <- num
                             if y.channel = 0 
@@ -116,7 +116,7 @@ module ScaleFactors =
                         granule = y.granule
                         channel = y.channel
                         data = 
-                            let temp = Array.zeroCreate 23
+                            let temp = Array.zeroCreate 22
                             let sb = [|5;10;15;20|]
                             let mutable index = 0
                             for i = 0 to 1 do
@@ -155,7 +155,7 @@ module Huffman =
     let parseHuffmanData (data:array<byte>) offset maxbit (frame:FrameInfo) (granule:sideInfoGranule) = 
         
         let samples = Array.zeroCreate 576
-        let mutable bitsArray = data
+        let mutable bitsArray = Array.concat [|data;Array.create 20 0uy|] //Just to be safe add padding
         let mutable bitoffset = offset
         let mutable samplecount = 0
 
@@ -181,11 +181,11 @@ module Huffman =
             let mutable colindex = 0
             
             match (snd x) with
-            |0 -> (0,0,0,0) //Sample = 0 for table0
+            |0 -> (0,0,0,snd x) //Sample = 0 for table0
             |_ -> 
                 let rec checkInTable (table:((int * int) array List)) rowindex = 
                     match table with
-                    |[] -> (0,0,0,snd x)
+                    |[] -> (0,0,0,0)
                     |head::tail -> 
                         colindex <- -1
                         if Array.exists 
@@ -313,7 +313,7 @@ module Maindata =
             let (x,y) = parseScaleFactors arrayBits.[bitcount..] sideinfo sideinfo.sideInfoGr.[i]
             sclfactors.[i] <- x
             bitcount <- bitcount + y
-            samples.[i] <- parseHuffmanData arrayBits bitcount (sideinfo.sideInfoGr.[i].par23Length + bitcount) frameinfo sideinfo.sideInfoGr.[i]
+            samples.[i] <- parseHuffmanData arrayBits bitcount (sideinfo.sideInfoGr.[i].par23Length + bitcount - y) frameinfo sideinfo.sideInfoGr.[i]
             bitcount <- maxbit
         
         (sclfactors,samples)
